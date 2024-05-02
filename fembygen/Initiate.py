@@ -2,13 +2,14 @@ import FreeCAD
 import FreeCADGui
 from fembygen import Common
 import os
+from TranslateUtils import translate
 
 MAX_NUM_PARAMETER = 10    # maximum number of parameters
 
 def QT_TRANSLATE_NOOP(context, text):
     return text
 
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"\Mod\FEMbyGEN\fembygen\translations"))
+FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"/Mod/FEMbyGEN/fembygen/translations"))
 FreeCADGui.updateLocale()
 
 class InitiateCommand():

@@ -7,12 +7,12 @@ from PySide import QtGui, QtCore
 import shutil
 import FreeCAD
 
-translate = FreeCAD.Qt.translate
+from TranslateUtils import translate
 def QT_TRANSLATE_NOOP(context, text):
     return text
 import FreeCADGui
 import os
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"\Mod\FEMbyGEN\fembygen\translations"))
+FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"/Mod/FEMbyGEN/fembygen/translations"))
 FreeCADGui.updateLocale()
 
 def makecreateGeo():

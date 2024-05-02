@@ -1,12 +1,13 @@
 import numpy as np
 from fembygen.topology import beso_lib
 import os
+from TranslateUtils import translate
 
 def QT_TRANSLATE_NOOP(context, text):
     return text
 import FreeCADGui
 import FreeCAD
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"\Mod\FEMbyGEN\fembygen\translations"))
+FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"/Mod/FEMbyGEN/fembygen/translations"))
 FreeCADGui.updateLocale()
 
 def find_size_elm(Elements, nodes):

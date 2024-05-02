@@ -1,6 +1,7 @@
 # plotting graphs
 import os
 import FreeCAD
+from TranslateUtils import translate
 try:
     from FreeCAD.Plot import Plot
 except ImportError:
@@ -10,7 +11,7 @@ def QT_TRANSLATE_NOOP(context, text):
     return text
 import FreeCADGui
 
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"\Mod\FEMbyGEN\fembygen\translations"))
+FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"/Mod/FEMbyGEN/fembygen/translations"))
 FreeCADGui.updateLocale()
 
 fig = Plot.figure(winTitle = "Topology Optimization")

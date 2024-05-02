@@ -12,14 +12,14 @@ Scilab:
 Much thanks goes to these individuals. It has been converted to Python by 
 Abraham Lee.
 """
-
+from TranslateUtils import translate
 import numpy as np
 import os
-
+import FreeCAD
 def QT_TRANSLATE_NOOP(context, text):
     return text
 import FreeCADGui
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"\Mod\FEMbyGEN\fembygen\translations"))
+FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"/Mod/FEMbyGEN/fembygen/translations"))
 FreeCADGui.updateLocale()
 
 

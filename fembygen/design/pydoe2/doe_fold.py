@@ -12,7 +12,7 @@ Scilab:
 Much thanks goes to these individuals. It has been converted to Python by 
 Abraham Lee.
 """
-
+import FreeCAD
 import numpy as np
 
 def QT_TRANSLATE_NOOP(context, text):
@@ -20,8 +20,8 @@ def QT_TRANSLATE_NOOP(context, text):
 
 import FreeCADGui
 import os
-
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"\Mod\FEMbyGEN\fembygen\translations"))
+from TranslateUtils import translate
+FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"/Mod/FEMbyGEN/fembygen/translations"))
 FreeCADGui.updateLocale()
 
 __all__ = ['fold']

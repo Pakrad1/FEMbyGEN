@@ -12,12 +12,12 @@ import glob
 import shutil
 from multiprocessing import cpu_count
 
-translate = FreeCAD.Qt.translate
+from TranslateUtils import translate
 def QT_TRANSLATE_NOOP(context, text):
     return text
 import FreeCADGui
 import os
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"\Mod\FEMbyGEN\fembygen\translations"))
+FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"/Mod/FEMbyGEN/fembygen/translations"))
 FreeCADGui.updateLocale()
 
 def makeTopology():

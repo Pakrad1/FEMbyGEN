@@ -6,9 +6,9 @@ translate = FreeCAD.Qt.translate
 import FreeCADGui
 import os
 
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"\Mod\FEMbyGEN\fembygen\translations"))
+FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"/Mod/FEMbyGEN/fembygen/translations"))
 FreeCADGui.updateLocale()
-
+from TranslateUtils import translate
 """
 This code was originally published by the following individuals for use with
 Scilab:

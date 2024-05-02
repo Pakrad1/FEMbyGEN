@@ -11,12 +11,12 @@ from femtools import ccxtools
 import numpy as np
 import functools
 
-translate = FreeCAD.Qt.translate
+from TranslateUtils import translate
 def QT_TRANSLATE_NOOP(context, text):
     return text
 import FreeCADGui
 import os
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"\Mod\FEMbyGEN\fembygen\translations"))
+FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"/Mod/FEMbyGEN/fembygen/translations"))
 FreeCADGui.updateLocale()
 
 def makeFEA():
