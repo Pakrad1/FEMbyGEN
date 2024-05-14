@@ -97,16 +97,16 @@ class find_size_elm_class:
                             ) / 12
     def find_size_elm(self):
 
-        find_size_elm_class(self).size_tria(self.Elements.tria3)
-        find_size_elm_class(self).size_tria(self.Elements.tria6)
-        find_size_elm_class(self).size_quad(self.Elements.quad4)
-        find_size_elm_class(self).size_quad(self.Elements.quad8)
-        find_size_elm_class(self).size_tetra(self.Elements.tetra4)
-        find_size_elm_class(self).size_tetra(self.Elements.tetra10)
-        find_size_elm_class(self).size_penta(self.Elements.penta6)
-        find_size_elm_class(self).size_penta(self.Elements.penta15)
-        find_size_elm_class(self).size_hexa(self.Elements.hexa8)
-        find_size_elm_class(self).size_hexa(self.Elements.hexa20)
+        find_size_elm_class(self.Elements,self.nodes).size_tria(self.Elements.tria3)
+        find_size_elm_class(self.Elements,self.nodes).size_tria(self.Elements.tria6)
+        find_size_elm_class(self.Elements,self.nodes).size_quad(self.Elements.quad4)
+        find_size_elm_class(self.Elements,self.nodes).size_quad(self.Elements.quad8)
+        find_size_elm_class(self.Elements,self.nodes).size_tetra(self.Elements.tetra4)
+        find_size_elm_class(self.Elements,self.nodes).size_tetra(self.Elements.tetra10)
+        find_size_elm_class(self.Elements,self.nodes).size_penta(self.Elements.penta6)
+        find_size_elm_class(self.Elements,self.nodes).size_penta(self.Elements.penta15)
+        find_size_elm_class(self.Elements,self.nodes).size_hexa(self.Elements.hexa8)
+        find_size_elm_class(self.Elements,self.nodes).size_hexa(self.Elements.hexa20)
         return self.size_elm
 
 class BesoFilters:
