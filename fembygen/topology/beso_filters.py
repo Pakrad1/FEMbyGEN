@@ -9,23 +9,21 @@ import FreeCAD
 FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"\Mod\FEMbyGEN\fembygen\translations"))
 FreeCADGui.updateLocale()
 
-class BesoFilters:
+class find_size_elm:
+        """calculate size of elements used for automatic filter range""" 
     def __init__(self, Elements, nodes):
         self.nodes= nodes
         self.Elements= Elements
-    
-    def find_size_elm(self):
-        """calculate size of elements used for automatic filter range""" 
-        size_elm={}
-        def size_tria(elm_category):
-            for en in elm_category:
-                x1, y1, z1 = self.nodes[elm_category[en][0]]
-                x2, y2, z2 = self.nodes[elm_category[en][1]]
-                x3, y3, z3 = self.nodes[elm_category[en][2]]
-                size_elm[en] = (((x1 - x2) ** 2 + (y1 - y2) ** 2 + (z1 - z2) ** 2) ** 0.5 +
-                                ((x1 - x3) ** 2 + (y1 - y3) ** 2 + (z1 - z3) ** 2) ** 0.5 +
-                                ((x2 - x3) ** 2 + (y2 - y3) ** 2 + (z2 - z3) ** 2) ** 0.5
-                                ) / 3
+        self.size_elm={}
+    def size_tria(self,elm_category):
+        for en in elm_category:
+            x1, y1, z1 = self.nodes[elm_category[en][0]]
+            x2, y2, z2 = self.nodes[elm_category[en][1]]
+            x3, y3, z3 = self.nodes[elm_category[en][2]]
+            self.size_elm[en] = (((x1 - x2) ** 2 + (y1 - y2) ** 2 + (z1 - z2) ** 2) ** 0.5 +
+                            ((x1 - x3) ** 2 + (y1 - y3) ** 2 + (z1 - z3) ** 2) ** 0.5 +
+                            ((x2 - x3) ** 2 + (y2 - y3) ** 2 + (z2 - z3) ** 2) ** 0.5
+                            ) / 3
 
         def size_quad(elm_category):
             for en in elm_category:
@@ -108,6 +106,10 @@ class BesoFilters:
         size_hexa(self.Elements.hexa20)
         return size_elm
 
+class BesoFilters:
+    def __init__(self, Elements, nodes):
+        self.nodes= nodes
+        self.Elements= Elements
 
     def get_filter_range(self, size_elm, domains, filtered_dn):
         """calculate average element size in domains given by filtered_dn"""
