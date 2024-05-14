@@ -282,7 +282,7 @@ class BesoMain:
         filter_auto = False"""
         for ft in self.filter_list:  # find if automatic filter range is used
             if ft[0] and (ft[1] == "auto") and not self.filter_auto:
-                size_elm = self.beso_filters.BesoFilters(Elements,nodes).find_size_elm()
+                size_elm = self.beso_filters.find_size_elm_class(Elements,nodes).find_size_elm()
                 self.filter_auto = True
         for ft in self.filter_list:
             if ft[0] and ft[1]:
