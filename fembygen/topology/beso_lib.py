@@ -942,7 +942,7 @@ class import_FI_int_pt:
                     disp_i[cn] = max([disp_i[cn]] + disp_condition[cn])
                 except TypeError:
                     disp_i[cn] = max(disp_condition[cn])
-        f.close()
+        self.f.close()
 
         # superposed steps
         # step_stress = {sn: {en: [[sxx, syy, szz, sxy, sxz, syz], next integration point], next element with int. pt. stresses}, next step, ...}
@@ -1135,41 +1135,51 @@ def import_displacement(file_nameW, displacement_graph, steps_superposition):
 
 # function for importing results from .frd file
 # Failure Indices are computed at each node and maximum or average above each element is returned
-def import_FI_node(reference_value, file_nameW, domains, criteria, domain_FI, file_name, elm_states,
+class import_FI_node:
+    def __init__(self,reference_value, file_nameW, domains, criteria, domain_FI, file_name, elm_states,
                 steps_superposition):
-    try:
-        f = open(file_nameW + ".frd", "r")
-    except IOError:
-        msg = "CalculiX result file not found, check your inputs"
-        BesoLib_types.write_to_log(file_name, "\nERROR: " + msg + "\n")
-        assert False, msg
+        self.reference_value=reference_value
+        self.file_nameW=file_nameW
+        self.domains=domains
+        self.criteria=criteria
+        self.domain_FI=domain_FI
+        self.file_name=file_name
+        self.elm_states=elm_states
+        self.steps_superposition=steps_superposition
+        
+        try:
+            self.f = open(self.file_nameW + ".frd", "r")
+        except IOError:
+            msg = "CalculiX result file not found, check your inputs"
+            BesoLib_types.write_to_log(self.file_name, "\nERROR: " + msg + "\n")
+            assert False, msg
 
-    memorized_steps = set()  # steps to use in superposition
-    if steps_superposition:
-        # {sn: {en: [sxx, syy, szz, sxy, sxz, syz], next element with int. pt. stresses}, next step, ...}
-        step_stress = {}
-        for LCn in range(len(steps_superposition)):
-            for (scale, sn) in steps_superposition[LCn]:
-                sn -= 1  # step numbering in CalculiX is from 1, but we have it 0 based
-                memorized_steps.add(sn)
-                step_stress[sn] = {}
+        self.memorized_steps = set()  # steps to use in superposition
+        if self.steps_superposition:
+            # {sn: {en: [sxx, syy, szz, sxy, sxz, syz], next element with int. pt. stresses}, next step, ...}
+            self.step_stress = {}
+            for LCn in range(len(self.steps_superposition)):
+                for (scale, sn) in self.steps_superposition[LCn]:
+                    sn -= 1  # step numbering in CalculiX is from 1, but we have it 0 based
+                    self.memorized_steps.add(sn)
+                    self.step_stress[sn] = {}
 
-    # prepare ordered elements of interest and failure criteria for each element
-    criteria_elm = {}
-    for dn in domain_FI:
-        for en in domains[dn]:
-            cr = []
-            for dn_crit in domain_FI[dn][elm_states[en]]:
-                cr.append(criteria.index(dn_crit))
-            criteria_elm[en] = cr
-    sorted_elements = sorted(criteria_elm.keys())  # [en_lowest, ..., en_highest]
+        # prepare ordered elements of interest and failure criteria for each element
+        self.criteria_elm = {}
+        for self.dn in domain_FI:
+            for self.en in domains[self.dn]:
+                self.cr = []
+                for dn_crit in domain_FI[self.dn][elm_states[self.en]]:
+                    self.cr.append(criteria.index(dn_crit))
+                self.criteria_elm[self.en] = self.cr
+        self.sorted_elements = sorted(self.criteria_elm.keys())  # [en_lowest, ..., en_highest]
 
-    def compute_FI():  # for the actual node
-        if en in criteria_elm:
-            for FIn in criteria_elm[en]:
-                if criteria[FIn][0] == "stress_von_Mises":
-                    s_allowable = criteria[FIn][1]
-                    FI_node[nn][FIn] = np.sqrt(0.5 * ((sxx - syy) ** 2 + (syy - szz) ** 2 + (szz - sxx) ** 2 +
+    def compute_FI(self):  # for the actual node
+        if self.en in self.criteria_elm:
+            for FIn in self.criteria_elm[en]:
+                if self.criteria[FIn][0] == "stress_von_Mises":
+                    s_allowable = self.criteria[FIn][1]
+                    self.FI_node[nn][FIn] = np.sqrt(0.5 * ((sxx - syy) ** 2 + (syy - szz) ** 2 + (szz - sxx) ** 2 +
                                                     6 * (sxy ** 2 + syz ** 2 + sxz ** 2))) / s_allowable
                 elif criteria[FIn][0] == "user_def":
                     FI_node[nn][FIn] = eval(criteria[FIn][1])
