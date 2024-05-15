@@ -37,77 +37,78 @@ class Elements:
         else:
             raise StopIteration
 
+class BesoLib:
 
-def types(elm_type):
-    if elm_type in ["S3", "CPS3", "CPE3", "CAX3", "M3D3"]:
-        number_of_nodes = 3
-        only_translations = False
-        elm_category = "tria3"
-    elif elm_type in ["S6", "CPS6", "CPE6", "CAX6", "M3D6"]:
-        number_of_nodes = 6
-        only_translations = False
-        elm_category = "tria6"
-    elif elm_type in ["S4", "S4R", "CPS4", "CPS4R", "CPE4", "CPE4R", "CAX4", "CAX4R", "M3D4", "M3D4R"]:
-        number_of_nodes = 4
-        only_translations = False
-        elm_category = "quad4"
-    elif elm_type in ["S8", "S8R", "CPS8", "CPS8R", "CPE8", "CPE8R", "CAX8", "CAX8R", "M3D8", "M3D8R"]:
-        number_of_nodes = 8
-        only_translations = False
-        elm_category = "quad8"
-    elif elm_type == "C3D4":
-        number_of_nodes = 4
-        only_translations = True
-        elm_category = "tetra4"
-    elif elm_type == "C3D10":
-        number_of_nodes = 10
-        only_translations = True
-        elm_category = "tetra10"
-    elif elm_type in ["C3D8", "C3D8R", "C3D8I"]:
-        number_of_nodes = 8
-        only_translations = True
-        elm_category = "hexa8"
-    elif elm_type in ["C3D20", "C3D20R", "C3D20RI"]:
-        number_of_nodes = 20
-        only_translations = True
-        elm_category = "hexa20"
-    elif elm_type == "C3D6":
-        number_of_nodes = 6
-        only_translations = True
-        elm_category = "penta6"
-    elif elm_type == "C3D15":
-        number_of_nodes = 15
-        only_translations = True
-        elm_category = "penta15"
-    elif elm_type == ["B31", "B31R", "T3D2"]:
-        number_of_nodes = 2
-        only_translations = False
-        elm_category = "line2"
-    elif elm_type == ["B32", "B32R", "T3D3"]:
-        number_of_nodes = 3
-        only_translations = False
-        elm_category = "line3"
-    elif elm_type in ["CPE3", "CPE6", "CPE4", "CPE4R", "CPE8", "CPE8R"]:
-        number_of_nodes = None
-        only_translations = False
-        elm_category = "plane strain"
-    elif elm_type in ["CPS3", "CPS6", "CPS4", "CPS4R", "CPS8", "CPS8R"]:
-        number_of_nodes = None
-        only_translations = False
-        elm_category = "plane stress"
-    elif elm_type in ["CAX3", "CAX6", "CAX4", "CAX4R", "CAX8", "CAX8R"]:
-        number_of_nodes = None
-        only_translations = False
-        elm_category = "axisymmetry"
-    else:
-        elm_category = ""
-        if (shells_as_composite is True) and (elm_type in ["S3", "S4", "S4R", "S8"]):
-            msg = ("\nERROR: " + elm_type + "element type found. CalculiX might need S6 or S8R elements for "
-                                            "composite\n")
-            print(msg)
-            write_to_log(file_name, msg)
-        return
-    return number_of_nodes, only_translations, elm_category
+    def types(elm_type):
+        if elm_type in ["S3", "CPS3", "CPE3", "CAX3", "M3D3"]:
+            number_of_nodes = 3
+            only_translations = False
+            elm_category = "tria3"
+        elif elm_type in ["S6", "CPS6", "CPE6", "CAX6", "M3D6"]:
+            number_of_nodes = 6
+            only_translations = False
+            elm_category = "tria6"
+        elif elm_type in ["S4", "S4R", "CPS4", "CPS4R", "CPE4", "CPE4R", "CAX4", "CAX4R", "M3D4", "M3D4R"]:
+            number_of_nodes = 4
+            only_translations = False
+            elm_category = "quad4"
+        elif elm_type in ["S8", "S8R", "CPS8", "CPS8R", "CPE8", "CPE8R", "CAX8", "CAX8R", "M3D8", "M3D8R"]:
+            number_of_nodes = 8
+            only_translations = False
+            elm_category = "quad8"
+        elif elm_type == "C3D4":
+            number_of_nodes = 4
+            only_translations = True
+            elm_category = "tetra4"
+        elif elm_type == "C3D10":
+            number_of_nodes = 10
+            only_translations = True
+            elm_category = "tetra10"
+        elif elm_type in ["C3D8", "C3D8R", "C3D8I"]:
+            number_of_nodes = 8
+            only_translations = True
+            elm_category = "hexa8"
+        elif elm_type in ["C3D20", "C3D20R", "C3D20RI"]:
+            number_of_nodes = 20
+            only_translations = True
+            elm_category = "hexa20"
+        elif elm_type == "C3D6":
+            number_of_nodes = 6
+            only_translations = True
+            elm_category = "penta6"
+        elif elm_type == "C3D15":
+            number_of_nodes = 15
+            only_translations = True
+            elm_category = "penta15"
+        elif elm_type == ["B31", "B31R", "T3D2"]:
+            number_of_nodes = 2
+            only_translations = False
+            elm_category = "line2"
+        elif elm_type == ["B32", "B32R", "T3D3"]:
+            number_of_nodes = 3
+            only_translations = False
+            elm_category = "line3"
+        elif elm_type in ["CPE3", "CPE6", "CPE4", "CPE4R", "CPE8", "CPE8R"]:
+            number_of_nodes = None
+            only_translations = False
+            elm_category = "plane strain"
+        elif elm_type in ["CPS3", "CPS6", "CPS4", "CPS4R", "CPS8", "CPS8R"]:
+            number_of_nodes = None
+            only_translations = False
+            elm_category = "plane stress"
+        elif elm_type in ["CAX3", "CAX6", "CAX4", "CAX4R", "CAX8", "CAX8R"]:
+            number_of_nodes = None
+            only_translations = False
+            elm_category = "axisymmetry"
+        else:
+            elm_category = ""
+            if (shells_as_composite is True) and (elm_type in ["S3", "S4", "S4R", "S8"]):
+                msg = ("\nERROR: " + elm_type + "element type found. CalculiX might need S6 or S8R elements for "
+                                                "composite\n")
+                print(msg)
+                write_to_log(file_name, msg)
+            return
+        return number_of_nodes, only_translations, elm_category
 
 # function to print ongoing messages to the log file
 
