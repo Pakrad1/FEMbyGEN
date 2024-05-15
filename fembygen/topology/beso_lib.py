@@ -113,221 +113,221 @@ class BesoLib:
 # function to print ongoing messages to the log file
 
 
-def write_to_log(file_name, msg):
-    f_log = open(file_name[:-4] + ".log.fcmacro", "a")
-    f_log.write(msg)
-    f_log.close()
+    def write_to_log(file_name, msg):
+        f_log = open(file_name[:-4] + ".log.fcmacro", "a")
+        f_log.write(msg)
+        f_log.close()
 
 
 # function importing a mesh consisting of nodes, volume and shell elements
-def import_inp(file_name, domains_from_config, domain_optimized, shells_as_composite):
-    nodes = {}  # dict with nodes position
-    all_elements = Elements()
-    model_definition = True
-    domains = {}
-    read_domain = False
-    read_node = False
-    elm_category = []
-    elm_2nd_line = False
-    elset_generate = False
-    special_type = ""  # for plane strain, plane stress, or axisymmetry
-    plane_strain = set()
-    plane_stress = set()
-    axisymmetry = set()
+    def import_inp(file_name, domains_from_config, domain_optimized, shells_as_composite):
+        nodes = {}  # dict with nodes position
+        all_elements = Elements()
+        model_definition = True
+        domains = {}
+        read_domain = False
+        read_node = False
+        elm_category = []
+        elm_2nd_line = False
+        elset_generate = False
+        special_type = ""  # for plane strain, plane stress, or axisymmetry
+        plane_strain = set()
+        plane_stress = set()
+        axisymmetry = set()
 
-    try:
-        f = open(file_name, "r")
-    except IOError:
-        msg = ("CalculiX input file " + file_name + " not found. Check your inputs.")
-        write_to_log(file_name, "\nERROR: " + msg + "\n")
-        raise Exception(msg)
-    line = "\n"
-    include = ""
-    while line != "":
-        if include:
-            line = f_include.readline()
-            if line == "":
-                f_include.close()
-                include = ""
-                line = f.readline()
-        else:
-            line = f.readline()
-        if line.strip() == '':
-            continue
-        elif line[0] == '*':  # start/end of a reading set
-            if line[0:2] == '**':  # comments
-                continue
-            if line[:8].upper() == "*INCLUDE":
-                start = 1 + line.index("=")
-                include = line[start:].strip().strip('"')
-                f_include = open(os.path.join(os.path.split(file_name)[0] + f"/{include}"), "r")
-                continue
-            read_node = False
-            elm_category = []
-            elm_2nd_line = False
-            read_domain = False
-            elset_generate = False
-
-        # reading nodes
-        if (line[:5].upper() == "*NODE") and (model_definition is True):
-            read_node = True
-        elif read_node is True:
-            line_list = line.split(',')
-            number = int(line_list[0])
-            x = float(line_list[1])
-            y = float(line_list[2])
-            z = float(line_list[3])
-            nodes[number] = [x, y, z]
-
-        # reading elements
-        elif line[:8].upper() == "*ELEMENT":
-            current_elset = ""
-            line_list = line[8:].split(',')
-            for line_part in line_list:
-                if line_part.split('=')[0].strip().upper() == "TYPE":
-                    elm_type = line_part.split('=')[1].strip().upper()
-                elif line_part.split('=')[0].strip().upper() == "ELSET":
-                    current_elset = line_part.split('=')[1].strip()
-            number_of_nodes, only_translations, elm_category = types(elm_type)
-
-        elif elm_category != []:
-            line_list = line.split(',')
-            if elm_2nd_line is False:
-                en = int(line_list[0])  # element number
-                if current_elset:  # save en to the domain
-                    try:
-                        domains[current_elset].add(en)
-                    except KeyError:
-                        domains[current_elset] = {en}
-                if elm_category == "plane strain":
-                    plane_strain.add(en)
-                elif elm_category == "plane stress":
-                    plane_stress.add(en)
-                elif elm_category == "axisymmetry":
-                    axisymmetry.add(en)
-                getattr(all_elements, elm_category)[en] = [int(x) for x in line_list[1:]]
-                if len(getattr(all_elements, elm_category)[en]) != number_of_nodes:
-                    elm_2nd_line = True
-            else:
-                elm_2nd_line = False
-                getattr(all_elements, elm_category)[en] += [int(x) for x in line_list]
-
-        # reading domains from elset
-        elif line[:6].upper() == "*ELSET":
-            line_split_comma = line.split(",")
-            if "=" in line_split_comma[1]:
-                name_member = 1
-                try:
-                    if "GENERATE" in line_split_comma[2].upper():
-                        elset_generate = True
-                except IndexError:
-                    pass
-            else:
-                name_member = 2
-                if "GENERATE" in line_split_comma[1].upper():
-                    elset_generate = True
-            member_split = line_split_comma[name_member].split("=")
-            current_elset = member_split[1].strip()
-            try:
-                domains[current_elset]
-            except KeyError:
-                domains[current_elset] = set()
-            if elset_generate is False:
-                read_domain = True
-        elif read_domain is True:
-            for en in line.split(","):
-                en = en.strip()
-                if en.isdigit():
-                    domains[current_elset].add(int(en))
-                elif en.isalpha():  # else: en is name of a previous elset
-                    domains[current_elset].update(domains[en])
-        elif elset_generate is True:
-            line_split_comma = line.split(",")
-            try:
-                if line_split_comma[3]:
-                    en_generated = list(range(int(line_split_comma[0]), int(line_split_comma[1]) + 1,
-                                              int(line_split_comma[2])))
-            except IndexError:
-                en_generated = list(range(int(line_split_comma[0]), int(line_split_comma[1]) + 1))
-            domains[current_elset].update(en_generated)
-
-        elif line[:5].upper() == "*STEP":
-            model_definition = False
-    f.close()
-
-    for dn in domains:
-        domains[dn] = list(domains[dn])
-    en_all = []
-    opt_domains = []
-    all_available = False
-    for dn in domains_from_config:
-        if dn.upper() == "ALL_AVAILABLE":
-            all_available = True
-            continue
         try:
-            en_all.extend(domains[dn])
-        except KeyError:
-            msg = "Element set '{}' not found in the inp file.".format(dn)
+            f = open(file_name, "r")
+        except IOError:
+            msg = ("CalculiX input file " + file_name + " not found. Check your inputs.")
             write_to_log(file_name, "\nERROR: " + msg + "\n")
             raise Exception(msg)
-        if domain_optimized[dn] is True:
-            opt_domains.extend(domains[dn])
-    msg = ("domains: %.f\n" % len(domains_from_config))
+        line = "\n"
+        include = ""
+        while line != "":
+            if include:
+                line = f_include.readline()
+                if line == "":
+                    f_include.close()
+                    include = ""
+                    line = f.readline()
+            else:
+                line = f.readline()
+            if line.strip() == '':
+                continue
+            elif line[0] == '*':  # start/end of a reading set
+                if line[0:2] == '**':  # comments
+                    continue
+                if line[:8].upper() == "*INCLUDE":
+                    start = 1 + line.index("=")
+                    include = line[start:].strip().strip('"')
+                    f_include = open(os.path.join(os.path.split(file_name)[0] + f"/{include}"), "r")
+                    continue
+                read_node = False
+                elm_category = []
+                elm_2nd_line = False
+                read_domain = False
+                elset_generate = False
 
-    if all_available:  # domain called all_available will contain rest of the elements
-        en_all2 = set()
-        en_all2 = en_all2.union(all_elements.tria3.keys(), all_elements.tria6.keys(), all_elements.quad4.keys(), all_elements.quad8.keys(),
-                                all_elements.tetra4.keys(), all_elements.tetra10.keys(), all_elements.hexa8.keys(), all_elements.hexa20.keys(),
-                                all_elements.penta6.keys(), all_elements.penta15.keys())
+            # reading nodes
+            if (line[:5].upper() == "*NODE") and (model_definition is True):
+                read_node = True
+            elif read_node is True:
+                line_list = line.split(',')
+                number = int(line_list[0])
+                x = float(line_list[1])
+                y = float(line_list[2])
+                z = float(line_list[3])
+                nodes[number] = [x, y, z]
 
-        domain_elements = all_elements
-        domains["all_available"] = en_all2 - set(en_all)
-        opt_domains.extend(domains["all_available"])
-        en_all = list(en_all2)
-    else:
-        domain_elements = Elements()
-        # only elements in domains_from_config are stored, the rest is discarded
-        keys = set(en_all).intersection(set(all_elements.tria3.keys()))
-        domain_elements.tria3 = {k: all_elements.tria3[k] for k in keys}
-        keys = set(en_all).intersection(set(all_elements.tria6.keys()))
-        domain_elements.tria6 = {k: all_elements.tria6[k] for k in keys}
-        keys = set(en_all).intersection(set(all_elements.quad4.keys()))
-        domain_elements.quad4 = {k: all_elements.quad4[k] for k in keys}
-        keys = set(en_all).intersection(set(all_elements.quad8.keys()))
-        domain_elements.quad8 = {k: all_elements.quad8[k] for k in keys}
-        keys = set(en_all).intersection(set(all_elements.tetra4.keys()))
-        domain_elements.tetra4 = {k: all_elements.tetra4[k] for k in keys}
-        keys = set(en_all).intersection(set(all_elements.tetra10.keys()))
-        domain_elements.tetra10 = {k: all_elements.tetra10[k] for k in keys}
-        keys = set(en_all).intersection(set(all_elements.hexa8.keys()))
-        domain_elements.hexa8 = {k: all_elements.hexa8[k] for k in keys}
-        keys = set(en_all).intersection(set(all_elements.hexa20.keys()))
-        domain_elements.hexa20 = {k: all_elements.hexa20[k] for k in keys}
-        keys = set(en_all).intersection(set(all_elements.penta6.keys()))
-        domain_elements.penta6 = {k: all_elements.penta6[k] for k in keys}
-        keys = set(en_all).intersection(set(all_elements.penta15.keys()))
-        domain_elements.penta15 = {k: all_elements.penta15[k] for k in keys}
-        en_all = list(domain_elements.tria3.keys()) + list(domain_elements.tria6.keys()) + list(domain_elements.quad4.keys()) + \
-            list(domain_elements.quad8.keys()) + list(domain_elements.tetra4.keys()) + list(domain_elements.tetra10.keys()) + \
-            list(domain_elements.hexa8.keys()) + list(domain_elements.hexa20.keys()) + list(domain_elements.penta6.keys()) + \
-            list(domain_elements.penta15.keys())
+            # reading elements
+            elif line[:8].upper() == "*ELEMENT":
+                current_elset = ""
+                line_list = line[8:].split(',')
+                for line_part in line_list:
+                    if line_part.split('=')[0].strip().upper() == "TYPE":
+                        elm_type = line_part.split('=')[1].strip().upper()
+                    elif line_part.split('=')[0].strip().upper() == "ELSET":
+                        current_elset = line_part.split('=')[1].strip()
+                number_of_nodes, only_translations, elm_category = types(elm_type)
 
-    msg += ("nodes  : %.f\nTRIA3  : %.f\nTRIA6  : %.f\nQUAD4  : %.f\nQUAD8  : %.f\nTETRA4 : %.f\nTETRA10: %.f\n"
-            "HEXA8  : %.f\nHEXA20 : %.f\nPENTA6 : %.f\nPENTA15: %.f\n"
-            % (len(nodes), len(domain_elements.tria3), len(domain_elements.tria6), len(domain_elements.quad4), len(domain_elements.quad8),
-               len(domain_elements.tetra4), len(domain_elements.tetra10), len(
-                domain_elements.hexa8), len(domain_elements.hexa20),
-               len(domain_elements.penta6), len(domain_elements.penta15)))
-    print(msg)
-    write_to_log(file_name, msg)
+            elif elm_category != []:
+                line_list = line.split(',')
+                if elm_2nd_line is False:
+                    en = int(line_list[0])  # element number
+                    if current_elset:  # save en to the domain
+                        try:
+                            domains[current_elset].add(en)
+                        except KeyError:
+                            domains[current_elset] = {en}
+                    if elm_category == "plane strain":
+                        plane_strain.add(en)
+                    elif elm_category == "plane stress":
+                        plane_stress.add(en)
+                    elif elm_category == "axisymmetry":
+                        axisymmetry.add(en)
+                    getattr(all_elements, elm_category)[en] = [int(x) for x in line_list[1:]]
+                    if len(getattr(all_elements, elm_category)[en]) != number_of_nodes:
+                        elm_2nd_line = True
+                else:
+                    elm_2nd_line = False
+                    getattr(all_elements, elm_category)[en] += [int(x) for x in line_list]
 
-    if not opt_domains:
-        row = "None optimized domain has been found. Check your inputs."
-        msg = ("\nERROR: " + row + "\n")
+            # reading domains from elset
+            elif line[:6].upper() == "*ELSET":
+                line_split_comma = line.split(",")
+                if "=" in line_split_comma[1]:
+                    name_member = 1
+                    try:
+                        if "GENERATE" in line_split_comma[2].upper():
+                            elset_generate = True
+                    except IndexError:
+                        pass
+                else:
+                    name_member = 2
+                    if "GENERATE" in line_split_comma[1].upper():
+                        elset_generate = True
+                member_split = line_split_comma[name_member].split("=")
+                current_elset = member_split[1].strip()
+                try:
+                    domains[current_elset]
+                except KeyError:
+                    domains[current_elset] = set()
+                if elset_generate is False:
+                    read_domain = True
+            elif read_domain is True:
+                for en in line.split(","):
+                    en = en.strip()
+                    if en.isdigit():
+                        domains[current_elset].add(int(en))
+                    elif en.isalpha():  # else: en is name of a previous elset
+                        domains[current_elset].update(domains[en])
+            elif elset_generate is True:
+                line_split_comma = line.split(",")
+                try:
+                    if line_split_comma[3]:
+                        en_generated = list(range(int(line_split_comma[0]), int(line_split_comma[1]) + 1,
+                                                int(line_split_comma[2])))
+                except IndexError:
+                    en_generated = list(range(int(line_split_comma[0]), int(line_split_comma[1]) + 1))
+                domains[current_elset].update(en_generated)
+
+            elif line[:5].upper() == "*STEP":
+                model_definition = False
+        f.close()
+
+        for dn in domains:
+            domains[dn] = list(domains[dn])
+        en_all = []
+        opt_domains = []
+        all_available = False
+        for dn in domains_from_config:
+            if dn.upper() == "ALL_AVAILABLE":
+                all_available = True
+                continue
+            try:
+                en_all.extend(domains[dn])
+            except KeyError:
+                msg = "Element set '{}' not found in the inp file.".format(dn)
+                write_to_log(file_name, "\nERROR: " + msg + "\n")
+                raise Exception(msg)
+            if domain_optimized[dn] is True:
+                opt_domains.extend(domains[dn])
+        msg = ("domains: %.f\n" % len(domains_from_config))
+
+        if all_available:  # domain called all_available will contain rest of the elements
+            en_all2 = set()
+            en_all2 = en_all2.union(all_elements.tria3.keys(), all_elements.tria6.keys(), all_elements.quad4.keys(), all_elements.quad8.keys(),
+                                    all_elements.tetra4.keys(), all_elements.tetra10.keys(), all_elements.hexa8.keys(), all_elements.hexa20.keys(),
+                                    all_elements.penta6.keys(), all_elements.penta15.keys())
+
+            domain_elements = all_elements
+            domains["all_available"] = en_all2 - set(en_all)
+            opt_domains.extend(domains["all_available"])
+            en_all = list(en_all2)
+        else:
+            domain_elements = Elements()
+            # only elements in domains_from_config are stored, the rest is discarded
+            keys = set(en_all).intersection(set(all_elements.tria3.keys()))
+            domain_elements.tria3 = {k: all_elements.tria3[k] for k in keys}
+            keys = set(en_all).intersection(set(all_elements.tria6.keys()))
+            domain_elements.tria6 = {k: all_elements.tria6[k] for k in keys}
+            keys = set(en_all).intersection(set(all_elements.quad4.keys()))
+            domain_elements.quad4 = {k: all_elements.quad4[k] for k in keys}
+            keys = set(en_all).intersection(set(all_elements.quad8.keys()))
+            domain_elements.quad8 = {k: all_elements.quad8[k] for k in keys}
+            keys = set(en_all).intersection(set(all_elements.tetra4.keys()))
+            domain_elements.tetra4 = {k: all_elements.tetra4[k] for k in keys}
+            keys = set(en_all).intersection(set(all_elements.tetra10.keys()))
+            domain_elements.tetra10 = {k: all_elements.tetra10[k] for k in keys}
+            keys = set(en_all).intersection(set(all_elements.hexa8.keys()))
+            domain_elements.hexa8 = {k: all_elements.hexa8[k] for k in keys}
+            keys = set(en_all).intersection(set(all_elements.hexa20.keys()))
+            domain_elements.hexa20 = {k: all_elements.hexa20[k] for k in keys}
+            keys = set(en_all).intersection(set(all_elements.penta6.keys()))
+            domain_elements.penta6 = {k: all_elements.penta6[k] for k in keys}
+            keys = set(en_all).intersection(set(all_elements.penta15.keys()))
+            domain_elements.penta15 = {k: all_elements.penta15[k] for k in keys}
+            en_all = list(domain_elements.tria3.keys()) + list(domain_elements.tria6.keys()) + list(domain_elements.quad4.keys()) + \
+                list(domain_elements.quad8.keys()) + list(domain_elements.tetra4.keys()) + list(domain_elements.tetra10.keys()) + \
+                list(domain_elements.hexa8.keys()) + list(domain_elements.hexa20.keys()) + list(domain_elements.penta6.keys()) + \
+                list(domain_elements.penta15.keys())
+
+        msg += ("nodes  : %.f\nTRIA3  : %.f\nTRIA6  : %.f\nQUAD4  : %.f\nQUAD8  : %.f\nTETRA4 : %.f\nTETRA10: %.f\n"
+                "HEXA8  : %.f\nHEXA20 : %.f\nPENTA6 : %.f\nPENTA15: %.f\n"
+                % (len(nodes), len(domain_elements.tria3), len(domain_elements.tria6), len(domain_elements.quad4), len(domain_elements.quad8),
+                len(domain_elements.tetra4), len(domain_elements.tetra10), len(
+                    domain_elements.hexa8), len(domain_elements.hexa20),
+                len(domain_elements.penta6), len(domain_elements.penta15)))
+        print(msg)
         write_to_log(file_name, msg)
-        assert False, row
 
-    return nodes, domain_elements, domains, opt_domains, en_all, plane_strain, plane_stress, axisymmetry
+        if not opt_domains:
+            row = "None optimized domain has been found. Check your inputs."
+            msg = ("\nERROR: " + row + "\n")
+            write_to_log(file_name, msg)
+            assert False, row
+
+        return nodes, domain_elements, domains, opt_domains, en_all, plane_strain, plane_stress, axisymmetry
 
 
 # function for computing volumes or area (shell elements) and centres of gravity
