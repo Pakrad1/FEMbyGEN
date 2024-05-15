@@ -688,14 +688,27 @@ class write_inp:
 
     # function for importing results from .dat file
     # Failure Indices are computed at each integration point and maximum or average above each element is returned
-    def import_FI_int_pt(reference_value, file_nameW, domains, criteria, domain_FI, file_name, elm_states,
-                        domains_from_config, steps_superposition, displacement_graph):
+class import_FI_int_pt:
+    def __init__(self,reference_value, file_nameW, domains, criteria, domain_FI, file_name, elm_states,
+                    domains_from_config, steps_superposition, displacement_graph):
+        self.reference_value=reference_value
+        self.file_nameW=file_nameW
+        self.domains=domains
+        self.criteria=criteria
+        self.domain_FI=domain_FI
+        self.file_name=file_name
+        self.elm_states=elm_states
+        self.domains_from_config=domains_from_config
+        self.steps_superposition=steps_superposition
+        self.displacement_graph=displacement_graph
+                
+    def import_FI_int_pt(self):
         
         try:
-            f = open(file_nameW + ".dat", "r")
+            f = open(self.file_nameW + ".dat", "r")
         except IOError:
             msg = "CalculiX result file not found, check your inputs"
-            BesoLib_types.write_to_log(file_name, "\nERROR: " + msg + "\n")
+            BesoLib_types.write_to_log(self.file_name, "\nERROR: " + msg + "\n")
             assert False, msg
         last_time = "initial"  # TODO solve how to read a new step which differs in time
         step_number = -1
@@ -706,324 +719,324 @@ class write_inp:
         heat_flux = {}  # only for the last step
 
         memorized_steps = set()  # steps to use in superposition
-        if steps_superposition:
+        if self.steps_superposition:
             # {sn: {en: [sxx, syy, szz, sxy, sxz, syz], next element with int. pt. stresses}, next step, ...}
             step_stress = {}
             step_ener = {}  # energy density {sn: {en: ener, next element with int. pt. stresses}, next step, ...}
-            for LCn in range(len(steps_superposition)):
-                for (scale, sn) in steps_superposition[LCn]:
+            for LCn in range(len(self.steps_superposition)):
+                for (scale, sn) in self.steps_superposition[LCn]:
                     sn -= 1  # step numbering in CalculiX is from 1, but we have it 0 based
                     memorized_steps.add(sn)
                     step_stress[sn] = {}
                     step_ener[sn] = {}
 
         # prepare FI dict from failure criteria
-        for dn in domain_FI:
-            if domain_FI[dn]:
-                for en in domains[dn]:
+        for dn in self.domain_FI:
+            if self.domain_FI[dn]:
+                for en in self.domains[dn]:
                     cr = []
-                    for dn_crit in domain_FI[dn][elm_states[en]]:
-                        cr.append(criteria.index(dn_crit))
+                    for dn_crit in self.domain_FI[dn][self.elm_states[en]]:
+                        cr.append(self.criteria.index(dn_crit))
                     criteria_elm[en] = cr
 
-        def compute_FI(sxx, syy, szz, sxy, syz, sxz, criteria_elm, criteria, FI_int_pt):
-            for en in criteria_elm:
-                if en in criteria_elm:
-                    criteria_en = criteria[en]
-                    for FIn in criteria_elm[en]:
-                        criterion_type, criterion_value = criteria_en[FIn]
-                        if criterion_type == "stress_von_Mises":
-                            s_allowable = criterion_value
-                            s_diff_sq_sum = 0.5 * ((sxx - syy) ** 2 + (syy - szz) ** 2 + (szz - sxx) ** 2 +
-                                            6 * (sxy ** 2 + syz ** 2 + sxz ** 2))
-                            FI = np.sqrt(s_diff_sq_sum) / s_allowable
-                            FI_int_pt[FIn].append(FI)
-                        elif criterion_type == "user_def":
-                            FI_int_pt[FIn].append(eval(criterion_value))
-                        else:
-                            msg = f"\nError: failure criterion {criteria[FIn]} not recognized.\n"
-                            BesoLib_types.write_to_log(file_name, msg)
-        def save_FI(sn, en):
-            FI_step[sn][en] = []
-            for FIn in range(len(criteria)):
-                FI_step[sn][en].append(None)
-                if FIn in criteria_elm[en]:
-                    if reference_value == "max":
-                        FI_step[sn][en][FIn] = max(FI_int_pt[FIn])
-                    elif reference_value == "average":
-                        FI_step[sn][en][FIn] = np.average(FI_int_pt[FIn])
+    def compute_FI(self,sxx, syy, szz, sxy, syz, sxz, criteria_elm, criteria, FI_int_pt):
+        for en in criteria_elm:
+            if en in criteria_elm:
+                criteria_en = criteria[en]
+                for FIn in criteria_elm[en]:
+                    criterion_type, criterion_value = criteria_en[FIn]
+                    if criterion_type == "stress_von_Mises":
+                        s_allowable = criterion_value
+                        s_diff_sq_sum = 0.5 * ((sxx - syy) ** 2 + (syy - szz) ** 2 + (szz - sxx) ** 2 +
+                                        6 * (sxy ** 2 + syz ** 2 + sxz ** 2))
+                        FI = np.sqrt(s_diff_sq_sum) / s_allowable
+                        FI_int_pt[FIn].append(FI)
+                    elif criterion_type == "user_def":
+                        FI_int_pt[FIn].append(eval(criterion_value))
+                    else:
+                        msg = f"\nError: failure criterion {criteria[FIn]} not recognized.\n"
+                        BesoLib_types.write_to_log(self.file_name, msg)
+    def save_FI(self,sn, en):
+        self.FI_step[sn][en] = []
+        for FIn in range(len(self.criteria)):
+            self.FI_step[sn][en].append(None)
+            if FIn in self.criteria_elm[en]:
+                if self.reference_value == "max":
+                    self.FI_step[sn][en][FIn] = max(self.FI_int_pt[FIn])
+                elif self.reference_value == "average":
+                    self.FI_step[sn][en][FIn] = np.average(self.FI_int_pt[FIn])
 
-        read_stresses = 0
-        read_energy_density = 0
-        read_heat_flux = 0
-        read_displacement = 0
-        disp_i = [None for _ in range(len(displacement_graph))]
-        disp_condition = {}
-        disp_components = []
-        read_buckling_factors = 0
-        buckling_factors = []
-        read_eigenvalues = 0
-        for line in f:
-            line_split = line.split()
-            if line.replace(" ", "") == "\n":
-                if read_stresses == 1:
+    read_stresses = 0
+    read_energy_density = 0
+    read_heat_flux = 0
+    read_displacement = 0
+    disp_i = [None for _ in range(len(displacement_graph))]
+    disp_condition = {}
+    disp_components = []
+    read_buckling_factors = 0
+    buckling_factors = []
+    read_eigenvalues = 0
+    for line in f:
+        line_split = line.split()
+        if line.replace(" ", "") == "\n":
+            if read_stresses == 1:
+                save_FI(step_number, en_last)
+            if read_energy_density == 1:
+                if read_eigenvalues:
+                    energy_density_eigen[eigen_number][en_last] = np.average(ener_int_pt)
+                else:
+                    energy_density_step[step_number][en_last] = np.average(ener_int_pt)
+            if read_heat_flux == 1:
+                heat_flux[en_last] = np.average(heat_int_pt)
+            if read_displacement == 1:
+                for cn in ns_reading:
+                    try:
+                        disp_i[cn] = max([disp_i[cn]] + disp_condition[cn])
+                    except TypeError:
+                        disp_i[cn] = max(disp_condition[cn])
+            read_stresses -= 1
+            read_energy_density -= 1
+            read_heat_flux -= 1
+            read_displacement -= 1
+            read_buckling_factors -= 1
+            FI_int_pt = [[] for _ in range(len(criteria))]
+            ener_int_pt = []
+            heat_int_pt = []
+            en_last = None
+
+        elif line[:9] == " stresses":
+            if line.split()[-4] in map(lambda x: x.upper(), domains_from_config):  # TODO upper already on user input
+                read_stresses = 2
+                if last_time != line_split[-1]:
+                    step_number += 1
+                    FI_step.append({})
+                    energy_density_step.append({})
+                    if steps_superposition:
+                        disp_components.append({})  # appending sn
+                    last_time = line_split[-1]
+                    read_eigenvalues = False  # TODO not for frequencies?
+        elif line[:24] == " internal energy density":
+            if line.split()[-4] in map(lambda x: x.upper(), domains_from_config):  # TODO upper already on user input
+                read_energy_density = 2
+                if last_time != line_split[-1]:
+                    step_number += 1
+                    FI_step.append({})
+                    energy_density_step.append({})
+                    if steps_superposition:
+                        disp_components.append({})  # appending sn
+                    last_time = line_split[-1]
+                    read_eigenvalues = False  # TODO not for frequencies?
+
+        elif line[:10] == " heat flux":
+            if line.split()[-4] in map(lambda x: x.upper(), domains_from_config):  # TODO upper already on user input
+                read_heat_flux = 2
+
+        elif line[:48] == "     B U C K L I N G   F A C T O R   O U T P U T":
+            read_buckling_factors = 3
+        elif read_buckling_factors == 1:
+            buckling_factors.append(float(line_split[1]))
+        elif line[:54] == "                    E I G E N V A L U E    N U M B E R":
+            eigen_number = int(line_split[-1])
+            read_eigenvalues = True
+            energy_density_eigen[eigen_number] = {}
+
+        elif line[:14] == " displacements":
+            cn = 0
+            ns_reading = []
+            for [ns, component] in displacement_graph:
+                if ns.upper() == line_split[4]:
+                    ns_reading.append(cn)
+                    disp_condition[cn] = []
+                cn += 1
+            read_displacement = 2
+            if steps_superposition:
+                if last_time != line_split[-1]:
+                    step_number += 1
+                    disp_components.append({})  # appending sn
+                    FI_step.append({})
+                    energy_density_step.append({})
+                    last_time = line_split[-1]
+                ns = line_split[4]
+                disp_components[-1][ns] = []  # appending ns
+
+        elif read_stresses == 1:
+            en = int(line_split[0])
+            if en_last != en:
+                if en_last:
                     save_FI(step_number, en_last)
-                if read_energy_density == 1:
+                    FI_int_pt = [[] for _ in range(len(criteria))]
+                en_last = en
+            sxx = float(line_split[2])
+            syy = float(line_split[3])
+            szz = float(line_split[4])
+            sxy = float(line_split[5])
+            sxz = float(line_split[6])
+            syz = float(line_split[7])
+            syx = sxy
+            szx = sxz
+            szy = syz
+            compute_FI()
+            if step_number in memorized_steps:
+                try:
+                    step_stress[step_number][en]
+                except KeyError:
+                    step_stress[step_number][en] = []
+                step_stress[step_number][en].append([sxx, syy, szz, sxy, sxz, syz])
+
+        elif read_energy_density == 1:
+            en = int(line_split[0])
+            if en_last != en:
+                if en_last:
                     if read_eigenvalues:
                         energy_density_eigen[eigen_number][en_last] = np.average(ener_int_pt)
                     else:
                         energy_density_step[step_number][en_last] = np.average(ener_int_pt)
-                if read_heat_flux == 1:
+                    ener_int_pt = []
+                en_last = en
+            energy_density = float(line_split[2])
+            ener_int_pt.append(energy_density)
+            if step_number in memorized_steps:
+                try:
+                    step_ener[step_number][en]
+                except KeyError:
+                    step_ener[step_number][en] = []
+                    step_ener[step_number][en].append(energy_density)
+
+        elif read_heat_flux == 1:
+            en = int(line_split[0])
+            if en_last != en:
+                if en_last:
                     heat_flux[en_last] = np.average(heat_int_pt)
-                if read_displacement == 1:
-                    for cn in ns_reading:
-                        try:
-                            disp_i[cn] = max([disp_i[cn]] + disp_condition[cn])
-                        except TypeError:
-                            disp_i[cn] = max(disp_condition[cn])
-                read_stresses -= 1
-                read_energy_density -= 1
-                read_heat_flux -= 1
-                read_displacement -= 1
-                read_buckling_factors -= 1
-                FI_int_pt = [[] for _ in range(len(criteria))]
-                ener_int_pt = []
-                heat_int_pt = []
-                en_last = None
+                    heat_int_pt = []
+                en_last = en
+            heat_flux_total = np.sqrt(float(line_split[2]) ** 2 + float(line_split[3]) ** 2 + float(line_split[4]) ** 2)
+            heat_int_pt.append(heat_flux_total)
 
-            elif line[:9] == " stresses":
-                if line.split()[-4] in map(lambda x: x.upper(), domains_from_config):  # TODO upper already on user input
-                    read_stresses = 2
-                    if last_time != line_split[-1]:
-                        step_number += 1
-                        FI_step.append({})
-                        energy_density_step.append({})
-                        if steps_superposition:
-                            disp_components.append({})  # appending sn
-                        last_time = line_split[-1]
-                        read_eigenvalues = False  # TODO not for frequencies?
-            elif line[:24] == " internal energy density":
-                if line.split()[-4] in map(lambda x: x.upper(), domains_from_config):  # TODO upper already on user input
-                    read_energy_density = 2
-                    if last_time != line_split[-1]:
-                        step_number += 1
-                        FI_step.append({})
-                        energy_density_step.append({})
-                        if steps_superposition:
-                            disp_components.append({})  # appending sn
-                        last_time = line_split[-1]
-                        read_eigenvalues = False  # TODO not for frequencies?
+        elif read_displacement == 1:
+            ux = float(line_split[1])
+            uy = float(line_split[2])
+            uz = float(line_split[3])
+            for cn in ns_reading:
+                component = displacement_graph[cn][1]
+                if component.upper() == "TOTAL":  # total displacement
+                    disp_condition[cn].append(sqrt(ux ** 2 + uy ** 2 + uz ** 2))
+                else:
+                    disp_condition[cn].append(eval(component))
+            if steps_superposition:  # save ux, uy, uz for steps superposition
+                disp_components[step_number][ns].append((ux, uy, uz))
 
-            elif line[:10] == " heat flux":
-                if line.split()[-4] in map(lambda x: x.upper(), domains_from_config):  # TODO upper already on user input
-                    read_heat_flux = 2
+    if read_stresses == 1:
+        save_FI(step_number, en_last)
+    if read_energy_density == 1:
+        if read_eigenvalues:
+            energy_density_eigen[eigen_number][en_last] = np.average(ener_int_pt)
+        else:
+            energy_density_step[step_number][en_last] = np.average(ener_int_pt)
+    if read_heat_flux == 1:
+        heat_flux[en_last] = np.average(heat_int_pt)
+    if read_displacement == 1:
+        for cn in ns_reading:
+            try:
+                disp_i[cn] = max([disp_i[cn]] + disp_condition[cn])
+            except TypeError:
+                disp_i[cn] = max(disp_condition[cn])
+    f.close()
 
-            elif line[:48] == "     B U C K L I N G   F A C T O R   O U T P U T":
-                read_buckling_factors = 3
-            elif read_buckling_factors == 1:
-                buckling_factors.append(float(line_split[1]))
-            elif line[:54] == "                    E I G E N V A L U E    N U M B E R":
-                eigen_number = int(line_split[-1])
-                read_eigenvalues = True
-                energy_density_eigen[eigen_number] = {}
+    # superposed steps
+    # step_stress = {sn: {en: [[sxx, syy, szz, sxy, sxz, syz], next integration point], next element with int. pt. stresses}, next step, ...}
+    # steps_superposition = [[(sn, scale), next scaled step to add, ...], next superposed step]
+    for LCn in range(len(steps_superposition)):
+        FI_step.append({})
+        energy_density_step.append({})
 
-            elif line[:14] == " displacements":
-                cn = 0
-                ns_reading = []
-                for [ns, component] in displacement_graph:
-                    if ns.upper() == line_split[4]:
-                        ns_reading.append(cn)
-                        disp_condition[cn] = []
-                    cn += 1
-                read_displacement = 2
-                if steps_superposition:
-                    if last_time != line_split[-1]:
-                        step_number += 1
-                        disp_components.append({})  # appending sn
-                        FI_step.append({})
-                        energy_density_step.append({})
-                        last_time = line_split[-1]
-                    ns = line_split[4]
-                    disp_components[-1][ns] = []  # appending ns
+        # sum scaled stress components at each integration point
+        superposition_stress = {}
+        superposition_energy_density = {}
+        for (scale, sn) in steps_superposition[LCn]:
+            sn -= 1  # step numbering in CalculiX is from 1, but we have it 0 based
+            # with stresses
+            for en in step_stress[sn]:
+                try:
+                    superposition_stress[en]
+                except KeyError:
+                    superposition_stress[en] = []  # list of integration points
+                for ip in range(len(step_stress[sn][en])):
+                    try:
+                        superposition_stress[en][ip]
+                    except IndexError:
+                        superposition_stress[en].append([0, 0, 0, 0, 0, 0])  # components of stress
+                    for component in range(6):
+                        superposition_stress[en][ip][component] += scale * step_stress[sn][en][ip][component]
+            # again with energy density
+            for en in step_ener[sn]:
+                try:
+                    superposition_energy_density[en]
+                except KeyError:
+                    superposition_energy_density[en] = []  # list of integration points
+                for ip in range(len(step_ener[sn][en])):
+                    try:
+                        superposition_energy_density[en][ip]
+                    except IndexError:
+                        superposition_energy_density[en].append(0)  # components of stress
+                    for component in range(6):
+                        superposition_energy_density[en][ip] += scale * step_ener[sn][en][ip]
 
-            elif read_stresses == 1:
-                en = int(line_split[0])
-                if en_last != en:
-                    if en_last:
-                        save_FI(step_number, en_last)
-                        FI_int_pt = [[] for _ in range(len(criteria))]
-                    en_last = en
-                sxx = float(line_split[2])
-                syy = float(line_split[3])
-                szz = float(line_split[4])
-                sxy = float(line_split[5])
-                sxz = float(line_split[6])
-                syz = float(line_split[7])
+        # compute FI in each element at superposed step
+        for en in superposition_stress:
+            FI_int_pt = [[] for _ in range(len(criteria))]
+            for ip in range(len(superposition_stress[en])):
+                sxx = superposition_stress[en][ip][0]
+                syy = superposition_stress[en][ip][1]
+                szz = superposition_stress[en][ip][2]
+                sxy = superposition_stress[en][ip][3]
+                sxz = superposition_stress[en][ip][4]
+                syz = superposition_stress[en][ip][5]
                 syx = sxy
                 szx = sxz
                 szy = syz
-                compute_FI()
-                if step_number in memorized_steps:
-                    try:
-                        step_stress[step_number][en]
-                    except KeyError:
-                        step_stress[step_number][en] = []
-                    step_stress[step_number][en].append([sxx, syy, szz, sxy, sxz, syz])
+                compute_FI()  # fill FI_int_pt
+            sn = -1  # last step number
+            save_FI(sn, en)  # save value to FI_step for given en
+        # compute average energy density over integration point at superposed step
+        for en in superposition_energy_density:
+            ener_int_pt = []
+            for ip in range(len(superposition_energy_density[en])):
+                ener_int_pt.append(superposition_energy_density[en][ip])
+            sn = -1  # last step number
+            energy_density_step[sn][en] = np.average(ener_int_pt)
 
-            elif read_energy_density == 1:
-                en = int(line_split[0])
-                if en_last != en:
-                    if en_last:
-                        if read_eigenvalues:
-                            energy_density_eigen[eigen_number][en_last] = np.average(ener_int_pt)
-                        else:
-                            energy_density_step[step_number][en_last] = np.average(ener_int_pt)
-                        ener_int_pt = []
-                    en_last = en
-                energy_density = float(line_split[2])
-                ener_int_pt.append(energy_density)
-                if step_number in memorized_steps:
-                    try:
-                        step_ener[step_number][en]
-                    except KeyError:
-                        step_ener[step_number][en] = []
-                        step_ener[step_number][en].append(energy_density)
+        # superposition of displacements to graph, same code block as in import_displacement function
+        cn = 0
+        for (ns, component) in displacement_graph:
+            ns = ns.upper()
+            uxe = []
+            uye = []
+            uze = []
+            for en2 in range(len(disp_components[0][ns])):
+                uxe.append(0)
+                uye.append(0)
+                uze.append(0)
+                for (scale, sn) in steps_superposition[LCn]:
+                    sn -= 1  # step numbering in CalculiX is from 1, but we have it 0 based
+                    uxe[-1] += scale * disp_components[sn][ns][en2][0]
+                    uye[-1] += scale * disp_components[sn][ns][en2][1]
+                    uze[-1] += scale * disp_components[sn][ns][en2][2]
 
-            elif read_heat_flux == 1:
-                en = int(line_split[0])
-                if en_last != en:
-                    if en_last:
-                        heat_flux[en_last] = np.average(heat_int_pt)
-                        heat_int_pt = []
-                    en_last = en
-                heat_flux_total = np.sqrt(float(line_split[2]) ** 2 + float(line_split[3]) ** 2 + float(line_split[4]) ** 2)
-                heat_int_pt.append(heat_flux_total)
+            for en2 in range(len(uxe)):  # iterate over elements in nset
+                ux = uxe.pop()
+                uy = uye.pop()
+                uz = uze.pop()
+                if component.upper() == "TOTAL":  # total displacement
+                    disp_condition[cn].append(sqrt(ux ** 2 + uy ** 2 + uz ** 2))
+                else:
+                    disp_condition[cn].append(eval(component))
+            try:
+                disp_i[cn] = max([disp_i[cn]] + disp_condition[cn])
+            except TypeError:
+                disp_i[cn] = max(disp_condition[cn])
+            cn += 1
 
-            elif read_displacement == 1:
-                ux = float(line_split[1])
-                uy = float(line_split[2])
-                uz = float(line_split[3])
-                for cn in ns_reading:
-                    component = displacement_graph[cn][1]
-                    if component.upper() == "TOTAL":  # total displacement
-                        disp_condition[cn].append(sqrt(ux ** 2 + uy ** 2 + uz ** 2))
-                    else:
-                        disp_condition[cn].append(eval(component))
-                if steps_superposition:  # save ux, uy, uz for steps superposition
-                    disp_components[step_number][ns].append((ux, uy, uz))
-
-        if read_stresses == 1:
-            save_FI(step_number, en_last)
-        if read_energy_density == 1:
-            if read_eigenvalues:
-                energy_density_eigen[eigen_number][en_last] = np.average(ener_int_pt)
-            else:
-                energy_density_step[step_number][en_last] = np.average(ener_int_pt)
-        if read_heat_flux == 1:
-            heat_flux[en_last] = np.average(heat_int_pt)
-        if read_displacement == 1:
-            for cn in ns_reading:
-                try:
-                    disp_i[cn] = max([disp_i[cn]] + disp_condition[cn])
-                except TypeError:
-                    disp_i[cn] = max(disp_condition[cn])
-        f.close()
-
-        # superposed steps
-        # step_stress = {sn: {en: [[sxx, syy, szz, sxy, sxz, syz], next integration point], next element with int. pt. stresses}, next step, ...}
-        # steps_superposition = [[(sn, scale), next scaled step to add, ...], next superposed step]
-        for LCn in range(len(steps_superposition)):
-            FI_step.append({})
-            energy_density_step.append({})
-
-            # sum scaled stress components at each integration point
-            superposition_stress = {}
-            superposition_energy_density = {}
-            for (scale, sn) in steps_superposition[LCn]:
-                sn -= 1  # step numbering in CalculiX is from 1, but we have it 0 based
-                # with stresses
-                for en in step_stress[sn]:
-                    try:
-                        superposition_stress[en]
-                    except KeyError:
-                        superposition_stress[en] = []  # list of integration points
-                    for ip in range(len(step_stress[sn][en])):
-                        try:
-                            superposition_stress[en][ip]
-                        except IndexError:
-                            superposition_stress[en].append([0, 0, 0, 0, 0, 0])  # components of stress
-                        for component in range(6):
-                            superposition_stress[en][ip][component] += scale * step_stress[sn][en][ip][component]
-                # again with energy density
-                for en in step_ener[sn]:
-                    try:
-                        superposition_energy_density[en]
-                    except KeyError:
-                        superposition_energy_density[en] = []  # list of integration points
-                    for ip in range(len(step_ener[sn][en])):
-                        try:
-                            superposition_energy_density[en][ip]
-                        except IndexError:
-                            superposition_energy_density[en].append(0)  # components of stress
-                        for component in range(6):
-                            superposition_energy_density[en][ip] += scale * step_ener[sn][en][ip]
-
-            # compute FI in each element at superposed step
-            for en in superposition_stress:
-                FI_int_pt = [[] for _ in range(len(criteria))]
-                for ip in range(len(superposition_stress[en])):
-                    sxx = superposition_stress[en][ip][0]
-                    syy = superposition_stress[en][ip][1]
-                    szz = superposition_stress[en][ip][2]
-                    sxy = superposition_stress[en][ip][3]
-                    sxz = superposition_stress[en][ip][4]
-                    syz = superposition_stress[en][ip][5]
-                    syx = sxy
-                    szx = sxz
-                    szy = syz
-                    compute_FI()  # fill FI_int_pt
-                sn = -1  # last step number
-                save_FI(sn, en)  # save value to FI_step for given en
-            # compute average energy density over integration point at superposed step
-            for en in superposition_energy_density:
-                ener_int_pt = []
-                for ip in range(len(superposition_energy_density[en])):
-                    ener_int_pt.append(superposition_energy_density[en][ip])
-                sn = -1  # last step number
-                energy_density_step[sn][en] = np.average(ener_int_pt)
-
-            # superposition of displacements to graph, same code block as in import_displacement function
-            cn = 0
-            for (ns, component) in displacement_graph:
-                ns = ns.upper()
-                uxe = []
-                uye = []
-                uze = []
-                for en2 in range(len(disp_components[0][ns])):
-                    uxe.append(0)
-                    uye.append(0)
-                    uze.append(0)
-                    for (scale, sn) in steps_superposition[LCn]:
-                        sn -= 1  # step numbering in CalculiX is from 1, but we have it 0 based
-                        uxe[-1] += scale * disp_components[sn][ns][en2][0]
-                        uye[-1] += scale * disp_components[sn][ns][en2][1]
-                        uze[-1] += scale * disp_components[sn][ns][en2][2]
-
-                for en2 in range(len(uxe)):  # iterate over elements in nset
-                    ux = uxe.pop()
-                    uy = uye.pop()
-                    uz = uze.pop()
-                    if component.upper() == "TOTAL":  # total displacement
-                        disp_condition[cn].append(sqrt(ux ** 2 + uy ** 2 + uz ** 2))
-                    else:
-                        disp_condition[cn].append(eval(component))
-                try:
-                    disp_i[cn] = max([disp_i[cn]] + disp_condition[cn])
-                except TypeError:
-                    disp_i[cn] = max(disp_condition[cn])
-                cn += 1
-
-        return FI_step, energy_density_step, disp_i, buckling_factors, energy_density_eigen, heat_flux
+    return FI_step, energy_density_step, disp_i, buckling_factors, energy_density_eigen, heat_flux
 
 
     # function for importing displacements if import_FI_int_pt is not called to read .dat file
