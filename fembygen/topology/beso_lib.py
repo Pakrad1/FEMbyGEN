@@ -699,35 +699,30 @@ class import_FI_int_pt:
         self.domains_from_config=domains_from_config
         self.steps_superposition=steps_superposition
         self.displacement_graph=displacement_graph
-                
-    def import_FI_int_pt(self):
-        
         try:
-            f = open(self.file_nameW + ".dat", "r")
+            self.f = open(self.file_nameW + ".dat", "r")
         except IOError:
             msg = "CalculiX result file not found, check your inputs"
             BesoLib_types.write_to_log(self.file_name, "\nERROR: " + msg + "\n")
             assert False, msg
-        last_time = "initial"  # TODO solve how to read a new step which differs in time
-        step_number = -1
-        criteria_elm = {}  # {en1: numbers of applied criteria, en2: [], ...}
-        FI_step = []  # list for steps - [{en1: list for criteria FI, en2: [], ...}, {en1: [], en2: [], ...}, next step]
-        energy_density_step = []  # list for steps - [{en1: energy_density, en2: ..., ...}, {en1: ..., ...}, next step]
-        energy_density_eigen = {}  # energy_density_eigen[eigen_number][en_last] = np.average(ener_int_pt)
-        heat_flux = {}  # only for the last step
-
-        memorized_steps = set()  # steps to use in superposition
+        self.last_time = "initial"  # TODO solve how to read a new step which differs in time
+        self.step_number = -1
+        self.criteria_elm = {}  # {en1: numbers of applied criteria, en2: [], ...}
+        self.FI_step = []  # list for steps - [{en1: list for criteria FI, en2: [], ...}, {en1: [], en2: [], ...}, next step]
+        self.energy_density_step = []  # list for steps - [{en1: energy_density, en2: ..., ...}, {en1: ..., ...}, next step]
+        self.energy_density_eigen = {}  # energy_density_eigen[eigen_number][en_last] = np.average(ener_int_pt)
+        self.heat_flux = {}  # only for the last step
+        self.memorized_steps = set()  # steps to use in superposition
         if self.steps_superposition:
             # {sn: {en: [sxx, syy, szz, sxy, sxz, syz], next element with int. pt. stresses}, next step, ...}
-            step_stress = {}
-            step_ener = {}  # energy density {sn: {en: ener, next element with int. pt. stresses}, next step, ...}
+            self.step_stress = {}
+            self.step_ener = {}  # energy density {sn: {en: ener, next element with int. pt. stresses}, next step, ...}
             for LCn in range(len(self.steps_superposition)):
                 for (scale, sn) in self.steps_superposition[LCn]:
                     sn -= 1  # step numbering in CalculiX is from 1, but we have it 0 based
-                    memorized_steps.add(sn)
-                    step_stress[sn] = {}
-                    step_ener[sn] = {}
-
+                    self.memorized_steps.add(sn)
+                    self.step_stress[sn] = {}
+                    self.step_ener[sn] = {} 
         # prepare FI dict from failure criteria
         for dn in self.domain_FI:
             if self.domain_FI[dn]:
@@ -735,7 +730,15 @@ class import_FI_int_pt:
                     cr = []
                     for dn_crit in self.domain_FI[dn][self.elm_states[en]]:
                         cr.append(self.criteria.index(dn_crit))
-                    criteria_elm[en] = cr
+                    self.criteria_elm[en] = cr   
+        # prepare FI dict from failure criteria
+        for dn in self.domain_FI:
+            if self.domain_FI[dn]:
+                for en in self.domains[dn]:
+                    cr = []
+                    for dn_crit in self.domain_FI[dn][self.elm_states[en]]:
+                        cr.append(self.criteria.index(dn_crit))
+                    self.criteria_elm[en] = cr    
 
     def compute_FI(self,sxx, syy, szz, sxy, syz, sxz, criteria_elm, criteria, FI_int_pt):
         for en in criteria_elm:
@@ -748,9 +751,10 @@ class import_FI_int_pt:
                         s_diff_sq_sum = 0.5 * ((sxx - syy) ** 2 + (syy - szz) ** 2 + (szz - sxx) ** 2 +
                                         6 * (sxy ** 2 + syz ** 2 + sxz ** 2))
                         FI = np.sqrt(s_diff_sq_sum) / s_allowable
-                        FI_int_pt[FIn].append(FI)
+                        self.FI_int_pt=FI_int_pt
+                        self.FI_int_pt[FIn].append(FI)
                     elif criterion_type == "user_def":
-                        FI_int_pt[FIn].append(eval(criterion_value))
+                        self.FI_int_pt[FIn].append(eval(criterion_value))
                     else:
                         msg = f"\nError: failure criterion {criteria[FIn]} not recognized.\n"
                         BesoLib_types.write_to_log(self.file_name, msg)
@@ -763,80 +767,299 @@ class import_FI_int_pt:
                     self.FI_step[sn][en][FIn] = max(self.FI_int_pt[FIn])
                 elif self.reference_value == "average":
                     self.FI_step[sn][en][FIn] = np.average(self.FI_int_pt[FIn])
+    def import_FI_int_pt(self):
+        read_stresses = 0
+        read_energy_density = 0
+        read_heat_flux = 0
+        read_displacement = 0
+        disp_i = [None for _ in range(len(self.displacement_graph))]
+        disp_condition = {}
+        disp_components = []
+        read_buckling_factors = 0
+        buckling_factors = []
+        read_eigenvalues = 0
+        for line in self.f:
+            line_split = line.split()
+            if line.replace(" ", "") == "\n":
+                if read_stresses == 1:
+                    self.save_FI(step_number, en_last)
+                if read_energy_density == 1:
+                    if read_eigenvalues:
+                        self.energy_density_eigen[eigen_number][en_last] = np.average(ener_int_pt)
+                    else:
+                        self.energy_density_step[step_number][en_last] = np.average(ener_int_pt)
+                if read_heat_flux == 1:
+                    self.heat_flux[en_last] = np.average(heat_int_pt)
+                if read_displacement == 1:
+                    for cn in ns_reading:
+                        try:
+                            disp_i[cn] = max([disp_i[cn]] + disp_condition[cn])
+                        except TypeError:
+                            disp_i[cn] = max(disp_condition[cn])
+                read_stresses -= 1
+                read_energy_density -= 1
+                read_heat_flux -= 1
+                read_displacement -= 1
+                read_buckling_factors -= 1
+                self.FI_int_pt = [[] for _ in range(len(self.criteria))]
+                ener_int_pt = []
+                heat_int_pt = []
+                en_last = None
 
-    read_stresses = 0
-    read_energy_density = 0
-    read_heat_flux = 0
+            elif line[:9] == " stresses":
+                if line.split()[-4] in map(lambda x: x.upper(), self.domains_from_config):  # TODO upper already on user input
+                    read_stresses = 2
+                    if last_time != line_split[-1]:
+                        step_number += 1
+                        self.FI_step.append({})
+                        self.energy_density_step.append({})
+                        if self.steps_superposition:
+                            disp_components.append({})  # appending sn
+                        last_time = line_split[-1]
+                        read_eigenvalues = False  # TODO not for frequencies?
+            elif line[:24] == " internal energy density":
+                if line.split()[-4] in map(lambda x: x.upper(), self.domains_from_config):  # TODO upper already on user input
+                    read_energy_density = 2
+                    if last_time != line_split[-1]:
+                        step_number += 1
+                        self.FI_step.append({})
+                        self.energy_density_step.append({})
+                        if self.steps_superposition:
+                            disp_components.append({})  # appending sn
+                        last_time = line_split[-1]
+                        read_eigenvalues = False  # TODO not for frequencies?
+
+            elif line[:10] == " heat flux":
+                if line.split()[-4] in map(lambda x: x.upper(), self.domains_from_config):  # TODO upper already on user input
+                    read_heat_flux = 2
+
+            elif line[:48] == "     B U C K L I N G   F A C T O R   O U T P U T":
+                read_buckling_factors = 3
+            elif read_buckling_factors == 1:
+                buckling_factors.append(float(line_split[1]))
+            elif line[:54] == "                    E I G E N V A L U E    N U M B E R":
+                eigen_number = int(line_split[-1])
+                read_eigenvalues = True
+                self.energy_density_eigen[eigen_number] = {}
+
+            elif line[:14] == " displacements":
+                cn = 0
+                ns_reading = []
+                for [ns, component] in self.displacement_graph:
+                    if ns.upper() == line_split[4]:
+                        ns_reading.append(cn)
+                        disp_condition[cn] = []
+                    cn += 1
+                read_displacement = 2
+                if self.steps_superposition:
+                    if last_time != line_split[-1]:
+                        step_number += 1
+                        disp_components.append({})  # appending sn
+                        self.FI_step.append({})
+                        self.energy_density_step.append({})
+                        last_time = line_split[-1]
+                    ns = line_split[4]
+                    disp_components[-1][ns] = []  # appending ns
+
+            elif read_stresses == 1:
+                en = int(line_split[0])
+                if en_last != en:
+                    if en_last:
+                        self.save_FI(step_number, en_last)
+                        self.FI_int_pt = [[] for _ in range(len(self.criteria))]
+                    en_last = en
+                sxx = float(line_split[2])
+                syy = float(line_split[3])
+                szz = float(line_split[4])
+                sxy = float(line_split[5])
+                sxz = float(line_split[6])
+                syz = float(line_split[7])
+                syx = sxy
+                szx = sxz
+                szy = syz
+                self.compute_FI()
+                if step_number in self.memorized_steps:
+                    try:
+                        self.step_stress[step_number][en]
+                    except KeyError:
+                        self.step_stress[step_number][en] = []
+                    self.step_stress[step_number][en].append([sxx, syy, szz, sxy, sxz, syz])
+
+            elif read_energy_density == 1:
+                en = int(line_split[0])
+                if en_last != en:
+                    if en_last:
+                        if read_eigenvalues:
+                            self.energy_density_eigen[eigen_number][en_last] = np.average(ener_int_pt)
+                        else:
+                            self.energy_density_step[step_number][en_last] = np.average(ener_int_pt)
+                        ener_int_pt = []
+                    en_last = en
+                energy_density = float(line_split[2])
+                ener_int_pt.append(energy_density)
+                if step_number in self.memorized_steps:
+                    try:
+                        self.step_ener[step_number][en]
+                    except KeyError:
+                        self.step_ener[step_number][en] = []
+                        self.step_ener[step_number][en].append(energy_density)
+
+            elif read_heat_flux == 1:
+                en = int(line_split[0])
+                if en_last != en:
+                    if en_last:
+                        self.heat_flux[en_last] = np.average(heat_int_pt)
+                        heat_int_pt = []
+                    en_last = en
+                heat_flux_total = np.sqrt(float(line_split[2]) ** 2 + float(line_split[3]) ** 2 + float(line_split[4]) ** 2)
+                heat_int_pt.append(heat_flux_total)
+
+            elif read_displacement == 1:
+                ux = float(line_split[1])
+                uy = float(line_split[2])
+                uz = float(line_split[3])
+                for cn in ns_reading:
+                    component = self.displacement_graph[cn][1]
+                    if component.upper() == "TOTAL":  # total displacement
+                        disp_condition[cn].append(sqrt(ux ** 2 + uy ** 2 + uz ** 2))
+                    else:
+                        disp_condition[cn].append(eval(component))
+                if self.steps_superposition:  # save ux, uy, uz for steps superposition
+                    disp_components[step_number][ns].append((ux, uy, uz))
+
+        if read_stresses == 1:
+            self.save_FI(step_number, en_last)
+        if read_energy_density == 1:
+            if read_eigenvalues:
+                self.energy_density_eigen[eigen_number][en_last] = np.average(ener_int_pt)
+            else:
+                self.energy_density_step[step_number][en_last] = np.average(ener_int_pt)
+        if read_heat_flux == 1:
+            self.heat_flux[en_last] = np.average(heat_int_pt)
+        if read_displacement == 1:
+            for cn in ns_reading:
+                try:
+                    disp_i[cn] = max([disp_i[cn]] + disp_condition[cn])
+                except TypeError:
+                    disp_i[cn] = max(disp_condition[cn])
+        f.close()
+
+        # superposed steps
+        # step_stress = {sn: {en: [[sxx, syy, szz, sxy, sxz, syz], next integration point], next element with int. pt. stresses}, next step, ...}
+        # steps_superposition = [[(sn, scale), next scaled step to add, ...], next superposed step]
+        for LCn in range(len(self.steps_superposition)):
+            self.FI_step.append({})
+            self.energy_density_step.append({})
+
+            # sum scaled stress components at each integration point
+            superposition_stress = {}
+            superposition_energy_density = {}
+            for (scale, sn) in self.steps_superposition[LCn]:
+                sn -= 1  # step numbering in CalculiX is from 1, but we have it 0 based
+                # with stresses
+                for en in self.step_stress[sn]:
+                    try:
+                        superposition_stress[en]
+                    except KeyError:
+                        superposition_stress[en] = []  # list of integration points
+                    for ip in range(len(self.step_stress[sn][en])):
+                        try:
+                            superposition_stress[en][ip]
+                        except IndexError:
+                            superposition_stress[en].append([0, 0, 0, 0, 0, 0])  # components of stress
+                        for component in range(6):
+                            superposition_stress[en][ip][component] += scale * self.step_stress[sn][en][ip][component]
+                # again with energy density
+                for en in self.step_ener[sn]:
+                    try:
+                        superposition_energy_density[en]
+                    except KeyError:
+                        superposition_energy_density[en] = []  # list of integration points
+                    for ip in range(len(self.step_ener[sn][en])):
+                        try:
+                            superposition_energy_density[en][ip]
+                        except IndexError:
+                            superposition_energy_density[en].append(0)  # components of stress
+                        for component in range(6):
+                            superposition_energy_density[en][ip] += scale * self.step_ener[sn][en][ip]
+
+            # compute FI in each element at superposed step
+            for en in superposition_stress:
+                self.FI_int_pt = [[] for _ in range(len(self.criteria))]
+                for ip in range(len(superposition_stress[en])):
+                    sxx = superposition_stress[en][ip][0]
+                    syy = superposition_stress[en][ip][1]
+                    szz = superposition_stress[en][ip][2]
+                    sxy = superposition_stress[en][ip][3]
+                    sxz = superposition_stress[en][ip][4]
+                    syz = superposition_stress[en][ip][5]
+                    syx = sxy
+                    szx = sxz
+                    szy = syz
+                    self.compute_FI()  # fill FI_int_pt
+                sn = -1  # last step number
+                self.save_FI(sn, en)  # save value to FI_step for given en
+            # compute average energy density over integration point at superposed step
+            for en in superposition_energy_density:
+                ener_int_pt = []
+                for ip in range(len(superposition_energy_density[en])):
+                    ener_int_pt.append(superposition_energy_density[en][ip])
+                sn = -1  # last step number
+                self.energy_density_step[sn][en] = np.average(ener_int_pt)
+
+            # superposition of displacements to graph, same code block as in import_displacement function
+            cn = 0
+            for (ns, component) in self.displacement_graph:
+                ns = ns.upper()
+                uxe = []
+                uye = []
+                uze = []
+                for en2 in range(len(disp_components[0][ns])):
+                    uxe.append(0)
+                    uye.append(0)
+                    uze.append(0)
+                    for (scale, sn) in self.steps_superposition[LCn]:
+                        sn -= 1  # step numbering in CalculiX is from 1, but we have it 0 based
+                        uxe[-1] += scale * disp_components[sn][ns][en2][0]
+                        uye[-1] += scale * disp_components[sn][ns][en2][1]
+                        uze[-1] += scale * disp_components[sn][ns][en2][2]
+
+                for en2 in range(len(uxe)):  # iterate over elements in nset
+                    ux = uxe.pop()
+                    uy = uye.pop()
+                    uz = uze.pop()
+                    if component.upper() == "TOTAL":  # total displacement
+                        disp_condition[cn].append(sqrt(ux ** 2 + uy ** 2 + uz ** 2))
+                    else:
+                        disp_condition[cn].append(eval(component))
+                try:
+                    disp_i[cn] = max([disp_i[cn]] + disp_condition[cn])
+                except TypeError:
+                    disp_i[cn] = max(disp_condition[cn])
+                cn += 1
+
+        return self.FI_step, self.energy_density_step, disp_i, buckling_factors, self.energy_density_eigen, self.heat_flux
+
+
+# function for importing displacements if import_FI_int_pt is not called to read .dat file
+def import_displacement(file_nameW, displacement_graph, steps_superposition):
+    f = open(file_nameW + ".dat", "r")
     read_displacement = 0
     disp_i = [None for _ in range(len(displacement_graph))]
     disp_condition = {}
     disp_components = []
-    read_buckling_factors = 0
-    buckling_factors = []
-    read_eigenvalues = 0
+    last_time = "initial"
+    step_number = -1
     for line in f:
         line_split = line.split()
         if line.replace(" ", "") == "\n":
-            if read_stresses == 1:
-                save_FI(step_number, en_last)
-            if read_energy_density == 1:
-                if read_eigenvalues:
-                    energy_density_eigen[eigen_number][en_last] = np.average(ener_int_pt)
-                else:
-                    energy_density_step[step_number][en_last] = np.average(ener_int_pt)
-            if read_heat_flux == 1:
-                heat_flux[en_last] = np.average(heat_int_pt)
             if read_displacement == 1:
                 for cn in ns_reading:
                     try:
                         disp_i[cn] = max([disp_i[cn]] + disp_condition[cn])
                     except TypeError:
                         disp_i[cn] = max(disp_condition[cn])
-            read_stresses -= 1
-            read_energy_density -= 1
-            read_heat_flux -= 1
             read_displacement -= 1
-            read_buckling_factors -= 1
-            FI_int_pt = [[] for _ in range(len(criteria))]
-            ener_int_pt = []
-            heat_int_pt = []
-            en_last = None
-
-        elif line[:9] == " stresses":
-            if line.split()[-4] in map(lambda x: x.upper(), domains_from_config):  # TODO upper already on user input
-                read_stresses = 2
-                if last_time != line_split[-1]:
-                    step_number += 1
-                    FI_step.append({})
-                    energy_density_step.append({})
-                    if steps_superposition:
-                        disp_components.append({})  # appending sn
-                    last_time = line_split[-1]
-                    read_eigenvalues = False  # TODO not for frequencies?
-        elif line[:24] == " internal energy density":
-            if line.split()[-4] in map(lambda x: x.upper(), domains_from_config):  # TODO upper already on user input
-                read_energy_density = 2
-                if last_time != line_split[-1]:
-                    step_number += 1
-                    FI_step.append({})
-                    energy_density_step.append({})
-                    if steps_superposition:
-                        disp_components.append({})  # appending sn
-                    last_time = line_split[-1]
-                    read_eigenvalues = False  # TODO not for frequencies?
-
-        elif line[:10] == " heat flux":
-            if line.split()[-4] in map(lambda x: x.upper(), domains_from_config):  # TODO upper already on user input
-                read_heat_flux = 2
-
-        elif line[:48] == "     B U C K L I N G   F A C T O R   O U T P U T":
-            read_buckling_factors = 3
-        elif read_buckling_factors == 1:
-            buckling_factors.append(float(line_split[1]))
-        elif line[:54] == "                    E I G E N V A L U E    N U M B E R":
-            eigen_number = int(line_split[-1])
-            read_eigenvalues = True
-            energy_density_eigen[eigen_number] = {}
 
         elif line[:14] == " displacements":
             cn = 0
@@ -851,64 +1074,9 @@ class import_FI_int_pt:
                 if last_time != line_split[-1]:
                     step_number += 1
                     disp_components.append({})  # appending sn
-                    FI_step.append({})
-                    energy_density_step.append({})
                     last_time = line_split[-1]
                 ns = line_split[4]
                 disp_components[-1][ns] = []  # appending ns
-
-        elif read_stresses == 1:
-            en = int(line_split[0])
-            if en_last != en:
-                if en_last:
-                    save_FI(step_number, en_last)
-                    FI_int_pt = [[] for _ in range(len(criteria))]
-                en_last = en
-            sxx = float(line_split[2])
-            syy = float(line_split[3])
-            szz = float(line_split[4])
-            sxy = float(line_split[5])
-            sxz = float(line_split[6])
-            syz = float(line_split[7])
-            syx = sxy
-            szx = sxz
-            szy = syz
-            compute_FI()
-            if step_number in memorized_steps:
-                try:
-                    step_stress[step_number][en]
-                except KeyError:
-                    step_stress[step_number][en] = []
-                step_stress[step_number][en].append([sxx, syy, szz, sxy, sxz, syz])
-
-        elif read_energy_density == 1:
-            en = int(line_split[0])
-            if en_last != en:
-                if en_last:
-                    if read_eigenvalues:
-                        energy_density_eigen[eigen_number][en_last] = np.average(ener_int_pt)
-                    else:
-                        energy_density_step[step_number][en_last] = np.average(ener_int_pt)
-                    ener_int_pt = []
-                en_last = en
-            energy_density = float(line_split[2])
-            ener_int_pt.append(energy_density)
-            if step_number in memorized_steps:
-                try:
-                    step_ener[step_number][en]
-                except KeyError:
-                    step_ener[step_number][en] = []
-                    step_ener[step_number][en].append(energy_density)
-
-        elif read_heat_flux == 1:
-            en = int(line_split[0])
-            if en_last != en:
-                if en_last:
-                    heat_flux[en_last] = np.average(heat_int_pt)
-                    heat_int_pt = []
-                en_last = en
-            heat_flux_total = np.sqrt(float(line_split[2]) ** 2 + float(line_split[3]) ** 2 + float(line_split[4]) ** 2)
-            heat_int_pt.append(heat_flux_total)
 
         elif read_displacement == 1:
             ux = float(line_split[1])
@@ -923,15 +1091,6 @@ class import_FI_int_pt:
             if steps_superposition:  # save ux, uy, uz for steps superposition
                 disp_components[step_number][ns].append((ux, uy, uz))
 
-    if read_stresses == 1:
-        save_FI(step_number, en_last)
-    if read_energy_density == 1:
-        if read_eigenvalues:
-            energy_density_eigen[eigen_number][en_last] = np.average(ener_int_pt)
-        else:
-            energy_density_step[step_number][en_last] = np.average(ener_int_pt)
-    if read_heat_flux == 1:
-        heat_flux[en_last] = np.average(heat_int_pt)
     if read_displacement == 1:
         for cn in ns_reading:
             try:
@@ -940,70 +1099,8 @@ class import_FI_int_pt:
                 disp_i[cn] = max(disp_condition[cn])
     f.close()
 
-    # superposed steps
-    # step_stress = {sn: {en: [[sxx, syy, szz, sxy, sxz, syz], next integration point], next element with int. pt. stresses}, next step, ...}
-    # steps_superposition = [[(sn, scale), next scaled step to add, ...], next superposed step]
-    for LCn in range(len(steps_superposition)):
-        FI_step.append({})
-        energy_density_step.append({})
-
-        # sum scaled stress components at each integration point
-        superposition_stress = {}
-        superposition_energy_density = {}
-        for (scale, sn) in steps_superposition[LCn]:
-            sn -= 1  # step numbering in CalculiX is from 1, but we have it 0 based
-            # with stresses
-            for en in step_stress[sn]:
-                try:
-                    superposition_stress[en]
-                except KeyError:
-                    superposition_stress[en] = []  # list of integration points
-                for ip in range(len(step_stress[sn][en])):
-                    try:
-                        superposition_stress[en][ip]
-                    except IndexError:
-                        superposition_stress[en].append([0, 0, 0, 0, 0, 0])  # components of stress
-                    for component in range(6):
-                        superposition_stress[en][ip][component] += scale * step_stress[sn][en][ip][component]
-            # again with energy density
-            for en in step_ener[sn]:
-                try:
-                    superposition_energy_density[en]
-                except KeyError:
-                    superposition_energy_density[en] = []  # list of integration points
-                for ip in range(len(step_ener[sn][en])):
-                    try:
-                        superposition_energy_density[en][ip]
-                    except IndexError:
-                        superposition_energy_density[en].append(0)  # components of stress
-                    for component in range(6):
-                        superposition_energy_density[en][ip] += scale * step_ener[sn][en][ip]
-
-        # compute FI in each element at superposed step
-        for en in superposition_stress:
-            FI_int_pt = [[] for _ in range(len(criteria))]
-            for ip in range(len(superposition_stress[en])):
-                sxx = superposition_stress[en][ip][0]
-                syy = superposition_stress[en][ip][1]
-                szz = superposition_stress[en][ip][2]
-                sxy = superposition_stress[en][ip][3]
-                sxz = superposition_stress[en][ip][4]
-                syz = superposition_stress[en][ip][5]
-                syx = sxy
-                szx = sxz
-                szy = syz
-                compute_FI()  # fill FI_int_pt
-            sn = -1  # last step number
-            save_FI(sn, en)  # save value to FI_step for given en
-        # compute average energy density over integration point at superposed step
-        for en in superposition_energy_density:
-            ener_int_pt = []
-            for ip in range(len(superposition_energy_density[en])):
-                ener_int_pt.append(superposition_energy_density[en][ip])
-            sn = -1  # last step number
-            energy_density_step[sn][en] = np.average(ener_int_pt)
-
-        # superposition of displacements to graph, same code block as in import_displacement function
+    # superposition of displacements to graph, same code block as in import_FI_int_pt function
+    for LCn in range(len(steps_superposition)):  # steps superposition
         cn = 0
         for (ns, component) in displacement_graph:
             ns = ns.upper()
@@ -1033,768 +1130,765 @@ class import_FI_int_pt:
             except TypeError:
                 disp_i[cn] = max(disp_condition[cn])
             cn += 1
-
-    return FI_step, energy_density_step, disp_i, buckling_factors, energy_density_eigen, heat_flux
-
-
-    # function for importing displacements if import_FI_int_pt is not called to read .dat file
-    def import_displacement(file_nameW, displacement_graph, steps_superposition):
-        f = open(file_nameW + ".dat", "r")
-        read_displacement = 0
-        disp_i = [None for _ in range(len(displacement_graph))]
-        disp_condition = {}
-        disp_components = []
-        last_time = "initial"
-        step_number = -1
-        for line in f:
-            line_split = line.split()
-            if line.replace(" ", "") == "\n":
-                if read_displacement == 1:
-                    for cn in ns_reading:
-                        try:
-                            disp_i[cn] = max([disp_i[cn]] + disp_condition[cn])
-                        except TypeError:
-                            disp_i[cn] = max(disp_condition[cn])
-                read_displacement -= 1
-
-            elif line[:14] == " displacements":
-                cn = 0
-                ns_reading = []
-                for [ns, component] in displacement_graph:
-                    if ns.upper() == line_split[4]:
-                        ns_reading.append(cn)
-                        disp_condition[cn] = []
-                    cn += 1
-                read_displacement = 2
-                if steps_superposition:
-                    if last_time != line_split[-1]:
-                        step_number += 1
-                        disp_components.append({})  # appending sn
-                        last_time = line_split[-1]
-                    ns = line_split[4]
-                    disp_components[-1][ns] = []  # appending ns
-
-            elif read_displacement == 1:
-                ux = float(line_split[1])
-                uy = float(line_split[2])
-                uz = float(line_split[3])
-                for cn in ns_reading:
-                    component = displacement_graph[cn][1]
-                    if component.upper() == "TOTAL":  # total displacement
-                        disp_condition[cn].append(sqrt(ux ** 2 + uy ** 2 + uz ** 2))
-                    else:
-                        disp_condition[cn].append(eval(component))
-                if steps_superposition:  # save ux, uy, uz for steps superposition
-                    disp_components[step_number][ns].append((ux, uy, uz))
-
-        if read_displacement == 1:
-            for cn in ns_reading:
-                try:
-                    disp_i[cn] = max([disp_i[cn]] + disp_condition[cn])
-                except TypeError:
-                    disp_i[cn] = max(disp_condition[cn])
-        f.close()
-
-        # superposition of displacements to graph, same code block as in import_FI_int_pt function
-        for LCn in range(len(steps_superposition)):  # steps superposition
-            cn = 0
-            for (ns, component) in displacement_graph:
-                ns = ns.upper()
-                uxe = []
-                uye = []
-                uze = []
-                for en2 in range(len(disp_components[0][ns])):
-                    uxe.append(0)
-                    uye.append(0)
-                    uze.append(0)
-                    for (scale, sn) in steps_superposition[LCn]:
-                        sn -= 1  # step numbering in CalculiX is from 1, but we have it 0 based
-                        uxe[-1] += scale * disp_components[sn][ns][en2][0]
-                        uye[-1] += scale * disp_components[sn][ns][en2][1]
-                        uze[-1] += scale * disp_components[sn][ns][en2][2]
-
-                for en2 in range(len(uxe)):  # iterate over elements in nset
-                    ux = uxe.pop()
-                    uy = uye.pop()
-                    uz = uze.pop()
-                    if component.upper() == "TOTAL":  # total displacement
-                        disp_condition[cn].append(sqrt(ux ** 2 + uy ** 2 + uz ** 2))
-                    else:
-                        disp_condition[cn].append(eval(component))
-                try:
-                    disp_i[cn] = max([disp_i[cn]] + disp_condition[cn])
-                except TypeError:
-                    disp_i[cn] = max(disp_condition[cn])
-                cn += 1
-        return disp_i
+    return disp_i
 
 
-    # function for importing results from .frd file
-    # Failure Indices are computed at each node and maximum or average above each element is returned
-    def import_FI_node(reference_value, file_nameW, domains, criteria, domain_FI, file_name, elm_states,
-                    steps_superposition):
-        try:
-            f = open(file_nameW + ".frd", "r")
-        except IOError:
-            msg = "CalculiX result file not found, check your inputs"
-            BesoLib_types.write_to_log(file_name, "\nERROR: " + msg + "\n")
-            assert False, msg
+# function for importing results from .frd file
+# Failure Indices are computed at each node and maximum or average above each element is returned
+def import_FI_node(reference_value, file_nameW, domains, criteria, domain_FI, file_name, elm_states,
+                steps_superposition):
+    try:
+        f = open(file_nameW + ".frd", "r")
+    except IOError:
+        msg = "CalculiX result file not found, check your inputs"
+        BesoLib_types.write_to_log(file_name, "\nERROR: " + msg + "\n")
+        assert False, msg
 
-        memorized_steps = set()  # steps to use in superposition
-        if steps_superposition:
-            # {sn: {en: [sxx, syy, szz, sxy, sxz, syz], next element with int. pt. stresses}, next step, ...}
-            step_stress = {}
-            for LCn in range(len(steps_superposition)):
-                for (scale, sn) in steps_superposition[LCn]:
-                    sn -= 1  # step numbering in CalculiX is from 1, but we have it 0 based
-                    memorized_steps.add(sn)
-                    step_stress[sn] = {}
-
-        # prepare ordered elements of interest and failure criteria for each element
-        criteria_elm = {}
-        for dn in domain_FI:
-            for en in domains[dn]:
-                cr = []
-                for dn_crit in domain_FI[dn][elm_states[en]]:
-                    cr.append(criteria.index(dn_crit))
-                criteria_elm[en] = cr
-        sorted_elements = sorted(criteria_elm.keys())  # [en_lowest, ..., en_highest]
-
-        def compute_FI():  # for the actual node
-            if en in criteria_elm:
-                for FIn in criteria_elm[en]:
-                    if criteria[FIn][0] == "stress_von_Mises":
-                        s_allowable = criteria[FIn][1]
-                        FI_node[nn][FIn] = np.sqrt(0.5 * ((sxx - syy) ** 2 + (syy - szz) ** 2 + (szz - sxx) ** 2 +
-                                                        6 * (sxy ** 2 + syz ** 2 + sxz ** 2))) / s_allowable
-                    elif criteria[FIn][0] == "user_def":
-                        FI_node[nn][FIn] = eval(criteria[FIn][1])
-                    else:
-                        msg = "\nError: failure criterion " + str(criteria[FIn]) + " not recognised.\n"
-                        BesoLib_types.write_to_log(file_name, msg)
-
-        def save_FI(sn, en):
-            FI_step[sn][en] = []
-            for FIn in range(len(criteria)):
-                FI_step[sn][en].append(None)
-                if FIn in criteria_elm[en]:
-                    if reference_value == "max":
-                        FI_step[sn][en][FIn] = max(FI_elm[en][FIn])
-                    elif reference_value == "average":
-                        FI_step[sn][en][FIn] = np.average(FI_elm[en][FIn])
-
-        read_mesh = False
-        frd_nodes = {}  # en associated to given node
-        elm_nodes = {}
-        for en in sorted_elements:
-            elm_nodes[en] = []
-        read_stress = False
-        sn = -1
-        FI_step = []  # list for steps - [{en1: list for criteria FI, en2: [], ...}, {en1: [], en2: [], ...}, next step]
-        for line in f:
-            # reading mesh
-            if line[:6] == "    3C":
-                read_mesh = True
-            elif read_mesh is True:
-                if line[:3] == " -1":
-                    en = int(line[3:13])
-                    if en == sorted_elements[0]:
-                        sorted_elements.pop(0)
-                        read_elm_nodes = True
-                    else:
-                        read_elm_nodes = False
-                elif line[:3] == " -2" and read_elm_nodes is True:
-                    associated_nn = list(map(int, line.split()[1:]))
-                    elm_nodes[en] += associated_nn
-                    for nn in associated_nn:
-                        frd_nodes[nn] = en
-
-            # block end
-            if line[:3] == " -3":
-                if read_mesh is True:
-                    read_mesh = False
-                    frd_nodes_sorted = sorted(frd_nodes.items())  # [(nn, en), ...]
-                elif read_stress is True:
-                    read_stress = False
-                    FI_elm = {}
-                    for en in elm_nodes:
-                        FI_elm[en] = [[] for _ in range(len(criteria))]
-                        if en in criteria_elm:
-                            for FIn in criteria_elm[en]:
-                                for nn in elm_nodes[en]:
-                                    FI_elm[en][FIn].append(FI_node[nn][FIn])
-                    FI_step.append({})
-                    for en in FI_elm:
-                        save_FI(sn, en)
-
-            # reading stresses
-            elif line[:11] == " -4  STRESS":
-                read_stress = True
-                sn += 1
-                FI_node = {}
-                for nn in frd_nodes:
-                    FI_node[nn] = [[] for _ in range(len(criteria))]
-                next_node = 0
-            elif read_stress is True:
-                if line[:3] == " -1":
-                    nn = int(line[3:13])
-                    if nn == frd_nodes_sorted[next_node][0]:
-                        next_node += 1
-                        sxx = float(line[13:25])
-                        syy = float(line[25:37])
-                        szz = float(line[37:49])
-                        sxy = float(line[49:61])
-                        syz = float(line[61:73])
-                        szx = float(line[73:85])
-                        syx = sxy
-                        szy = syz
-                        sxz = szx
-                        en = frd_nodes[nn]
-                        compute_FI()
-                        if sn in memorized_steps:
-                            try:
-                                step_stress[sn][en]
-                            except KeyError:
-                                step_stress[sn][en] = {}
-                            step_stress[sn][en][nn] = [sxx, syy, szz, sxy, sxz, syz]
-        f.close()
-
-        # superposed steps
-        # step_stress = {sn: {en: [[sxx, syy, szz, sxy, sxz, syz], next node], next element with nodal stresses}, next step, ...}
-        # steps_superposition = [[(sn, scale), next scaled step to add, ...], next superposed step]
+    memorized_steps = set()  # steps to use in superposition
+    if steps_superposition:
+        # {sn: {en: [sxx, syy, szz, sxy, sxz, syz], next element with int. pt. stresses}, next step, ...}
+        step_stress = {}
         for LCn in range(len(steps_superposition)):
-            FI_step.append({})
-
-            # sum scaled stress components at each integration node
-            superposition_stress = {}
             for (scale, sn) in steps_superposition[LCn]:
                 sn -= 1  # step numbering in CalculiX is from 1, but we have it 0 based
-                for en in step_stress[sn]:
-                    try:
-                        superposition_stress[en]
-                    except KeyError:
-                        superposition_stress[en] = {}  # for nodes
-                    for nn in elm_nodes[en]:
-                        try:
-                            superposition_stress[en][nn]
-                        except KeyError:
-                            superposition_stress[en][nn] = [0, 0, 0, 0, 0, 0]  # components of stress
-                        for component in range(6):
-                            superposition_stress[en][nn][component] += scale * step_stress[sn][en][nn][component]
+                memorized_steps.add(sn)
+                step_stress[sn] = {}
 
-            # compute FI in each element at superposed step
-            for en in superposition_stress:
-                FI_node = {}
-                for nn in elm_nodes[en]:
-                    FI_node[nn] = [[] for _ in range(len(criteria))]
-                    sxx = superposition_stress[en][nn][0]
-                    syy = superposition_stress[en][nn][1]
-                    szz = superposition_stress[en][nn][2]
-                    sxy = superposition_stress[en][nn][3]
-                    sxz = superposition_stress[en][nn][4]
-                    syz = superposition_stress[en][nn][5]
+    # prepare ordered elements of interest and failure criteria for each element
+    criteria_elm = {}
+    for dn in domain_FI:
+        for en in domains[dn]:
+            cr = []
+            for dn_crit in domain_FI[dn][elm_states[en]]:
+                cr.append(criteria.index(dn_crit))
+            criteria_elm[en] = cr
+    sorted_elements = sorted(criteria_elm.keys())  # [en_lowest, ..., en_highest]
+
+    def compute_FI():  # for the actual node
+        if en in criteria_elm:
+            for FIn in criteria_elm[en]:
+                if criteria[FIn][0] == "stress_von_Mises":
+                    s_allowable = criteria[FIn][1]
+                    FI_node[nn][FIn] = np.sqrt(0.5 * ((sxx - syy) ** 2 + (syy - szz) ** 2 + (szz - sxx) ** 2 +
+                                                    6 * (sxy ** 2 + syz ** 2 + sxz ** 2))) / s_allowable
+                elif criteria[FIn][0] == "user_def":
+                    FI_node[nn][FIn] = eval(criteria[FIn][1])
+                else:
+                    msg = "\nError: failure criterion " + str(criteria[FIn]) + " not recognised.\n"
+                    BesoLib_types.write_to_log(file_name, msg)
+
+    def save_FI(sn, en):
+        FI_step[sn][en] = []
+        for FIn in range(len(criteria)):
+            FI_step[sn][en].append(None)
+            if FIn in criteria_elm[en]:
+                if reference_value == "max":
+                    FI_step[sn][en][FIn] = max(FI_elm[en][FIn])
+                elif reference_value == "average":
+                    FI_step[sn][en][FIn] = np.average(FI_elm[en][FIn])
+
+    read_mesh = False
+    frd_nodes = {}  # en associated to given node
+    elm_nodes = {}
+    for en in sorted_elements:
+        elm_nodes[en] = []
+    read_stress = False
+    sn = -1
+    FI_step = []  # list for steps - [{en1: list for criteria FI, en2: [], ...}, {en1: [], en2: [], ...}, next step]
+    for line in f:
+        # reading mesh
+        if line[:6] == "    3C":
+            read_mesh = True
+        elif read_mesh is True:
+            if line[:3] == " -1":
+                en = int(line[3:13])
+                if en == sorted_elements[0]:
+                    sorted_elements.pop(0)
+                    read_elm_nodes = True
+                else:
+                    read_elm_nodes = False
+            elif line[:3] == " -2" and read_elm_nodes is True:
+                associated_nn = list(map(int, line.split()[1:]))
+                elm_nodes[en] += associated_nn
+                for nn in associated_nn:
+                    frd_nodes[nn] = en
+
+        # block end
+        if line[:3] == " -3":
+            if read_mesh is True:
+                read_mesh = False
+                frd_nodes_sorted = sorted(frd_nodes.items())  # [(nn, en), ...]
+            elif read_stress is True:
+                read_stress = False
+                FI_elm = {}
+                for en in elm_nodes:
+                    FI_elm[en] = [[] for _ in range(len(criteria))]
+                    if en in criteria_elm:
+                        for FIn in criteria_elm[en]:
+                            for nn in elm_nodes[en]:
+                                FI_elm[en][FIn].append(FI_node[nn][FIn])
+                FI_step.append({})
+                for en in FI_elm:
+                    save_FI(sn, en)
+
+        # reading stresses
+        elif line[:11] == " -4  STRESS":
+            read_stress = True
+            sn += 1
+            FI_node = {}
+            for nn in frd_nodes:
+                FI_node[nn] = [[] for _ in range(len(criteria))]
+            next_node = 0
+        elif read_stress is True:
+            if line[:3] == " -1":
+                nn = int(line[3:13])
+                if nn == frd_nodes_sorted[next_node][0]:
+                    next_node += 1
+                    sxx = float(line[13:25])
+                    syy = float(line[25:37])
+                    szz = float(line[37:49])
+                    sxy = float(line[49:61])
+                    syz = float(line[61:73])
+                    szx = float(line[73:85])
                     syx = sxy
-                    szx = sxz
                     szy = syz
-                    compute_FI()  # fill FI_node
-                FI_elm[en] = [[] for _ in range(len(criteria))]
+                    sxz = szx
+                    en = frd_nodes[nn]
+                    compute_FI()
+                    if sn in memorized_steps:
+                        try:
+                            step_stress[sn][en]
+                        except KeyError:
+                            step_stress[sn][en] = {}
+                        step_stress[sn][en][nn] = [sxx, syy, szz, sxy, sxz, syz]
+    f.close()
 
-                if en in criteria_elm:
-                    for FIn in criteria_elm[en]:
-                        for nn in elm_nodes[en]:
-                            FI_elm[en][FIn].append(FI_node[nn][FIn])
-                sn = -1  # last step number
-                save_FI(sn, en)  # save value to FI_step for given en
+    # superposed steps
+    # step_stress = {sn: {en: [[sxx, syy, szz, sxy, sxz, syz], next node], next element with nodal stresses}, next step, ...}
+    # steps_superposition = [[(sn, scale), next scaled step to add, ...], next superposed step]
+    for LCn in range(len(steps_superposition)):
+        FI_step.append({})
 
-        return FI_step
+        # sum scaled stress components at each integration node
+        superposition_stress = {}
+        for (scale, sn) in steps_superposition[LCn]:
+            sn -= 1  # step numbering in CalculiX is from 1, but we have it 0 based
+            for en in step_stress[sn]:
+                try:
+                    superposition_stress[en]
+                except KeyError:
+                    superposition_stress[en] = {}  # for nodes
+                for nn in elm_nodes[en]:
+                    try:
+                        superposition_stress[en][nn]
+                    except KeyError:
+                        superposition_stress[en][nn] = [0, 0, 0, 0, 0, 0]  # components of stress
+                    for component in range(6):
+                        superposition_stress[en][nn][component] += scale * step_stress[sn][en][nn][component]
+
+        # compute FI in each element at superposed step
+        for en in superposition_stress:
+            FI_node = {}
+            for nn in elm_nodes[en]:
+                FI_node[nn] = [[] for _ in range(len(criteria))]
+                sxx = superposition_stress[en][nn][0]
+                syy = superposition_stress[en][nn][1]
+                szz = superposition_stress[en][nn][2]
+                sxy = superposition_stress[en][nn][3]
+                sxz = superposition_stress[en][nn][4]
+                syz = superposition_stress[en][nn][5]
+                syx = sxy
+                szx = sxz
+                szy = syz
+                compute_FI()  # fill FI_node
+            FI_elm[en] = [[] for _ in range(len(criteria))]
+
+            if en in criteria_elm:
+                for FIn in criteria_elm[en]:
+                    for nn in elm_nodes[en]:
+                        FI_elm[en][FIn].append(FI_node[nn][FIn])
+            sn = -1  # last step number
+            save_FI(sn, en)  # save value to FI_step for given en
+
+    return FI_step
 
 
-    # function for switch element states
-    def switching(elm_states, domains_from_config, domain_optimized, domains, FI_step_max, domain_density, domain_thickness,
-                domain_shells, area_elm, volume_elm, sensitivity_number, mass, mass_referential, mass_addition_ratio,
-                mass_removal_ratio, compensate_state_filter, mass_excess, decay_coefficient, FI_violated, i_violated, i,
-                mass_goal_i, domain_same_state):
+# function for switch element states
+def switching(elm_states, domains_from_config, domain_optimized, domains, FI_step_max, domain_density, domain_thickness,
+            domain_shells, area_elm, volume_elm, sensitivity_number, mass, mass_referential, mass_addition_ratio,
+            mass_removal_ratio, compensate_state_filter, mass_excess, decay_coefficient, FI_violated, i_violated, i,
+            mass_goal_i, domain_same_state):
 
-        def compute_difference(failing=False):
-            if en in domain_shells[dn]:  # shells mass difference
-                mass[i] += area_elm[en] * domain_density[dn][elm_states_en] * domain_thickness[dn][elm_states_en]
-                if (failing is False) and (elm_states_en != 0):  # for potential switching down
-                    mass_decrease[en] = area_elm[en] * (
-                        domain_density[dn][elm_states_en] * domain_thickness[dn][elm_states_en] -
-                        domain_density[dn][elm_states_en - 1] * domain_thickness[dn][elm_states_en - 1])
-                if elm_states_en < len(domain_density[dn]) - 1:  # for potential switching up
-                    mass_increase[en] = area_elm[en] * (
-                        domain_density[dn][elm_states_en + 1] * domain_thickness[dn][elm_states_en + 1] -
-                        domain_density[dn][elm_states_en] * domain_thickness[dn][elm_states_en])
-            else:  # volumes mass difference
-                mass[i] += volume_elm[en] * domain_density[dn][elm_states_en]
-                if (failing is False) and (elm_states_en != 0):  # for potential switching down
-                    mass_decrease[en] = volume_elm[en] * (
-                        domain_density[dn][elm_states_en] - domain_density[dn][elm_states_en - 1])
-                if elm_states_en < len(domain_density[dn]) - 1:  # for potential switching up
-                    mass_increase[en] = volume_elm[en] * (
-                        domain_density[dn][elm_states_en + 1] - domain_density[dn][elm_states_en])
+    def compute_difference(failing=False):
+        if en in domain_shells[dn]:  # shells mass difference
+            mass[i] += area_elm[en] * domain_density[dn][elm_states_en] * domain_thickness[dn][elm_states_en]
+            if (failing is False) and (elm_states_en != 0):  # for potential switching down
+                mass_decrease[en] = area_elm[en] * (
+                    domain_density[dn][elm_states_en] * domain_thickness[dn][elm_states_en] -
+                    domain_density[dn][elm_states_en - 1] * domain_thickness[dn][elm_states_en - 1])
+            if elm_states_en < len(domain_density[dn]) - 1:  # for potential switching up
+                mass_increase[en] = area_elm[en] * (
+                    domain_density[dn][elm_states_en + 1] * domain_thickness[dn][elm_states_en + 1] -
+                    domain_density[dn][elm_states_en] * domain_thickness[dn][elm_states_en])
+        else:  # volumes mass difference
+            mass[i] += volume_elm[en] * domain_density[dn][elm_states_en]
+            if (failing is False) and (elm_states_en != 0):  # for potential switching down
+                mass_decrease[en] = volume_elm[en] * (
+                    domain_density[dn][elm_states_en] - domain_density[dn][elm_states_en - 1])
+            if elm_states_en < len(domain_density[dn]) - 1:  # for potential switching up
+                mass_increase[en] = volume_elm[en] * (
+                    domain_density[dn][elm_states_en + 1] - domain_density[dn][elm_states_en])
 
-        mass_increase = {}
-        mass_decrease = {}
-        sensitivity_number_opt = {}
-        mass.append(0)
-        mass_overloaded = 0.0
-        # switch up overloaded elements
-        for dn in domains_from_config:
-            if domain_optimized[dn] is True:
-                len_domain_density_dn = len(domain_density[dn])
-                if domain_same_state[dn] in ["max", "average"]:
-                    new_state = 0
-                    failing = False
-                    highest_state = 0
-                    sensitivity_number_list = []
-                    sensitivity_number_of_domain = 0
-                    for en in domains[dn]:  # find highest state, sensitivity number and if failing
-                        elm_states_en = elm_states[en]
-                        if elm_states_en >= highest_state:
-                            if domain_same_state[dn] == "max":
-                                sensitivity_number_of_domain = max(sensitivity_number_of_domain, sensitivity_number[en])
-                            highest_state = elm_states_en
-                        if FI_step_max[en] >= 1:  # new state if failing
-                            failing = True
-                            if elm_states_en < len_domain_density_dn - 1:
-                                new_state = max(new_state, elm_states_en + 1)
-                            else:
-                                new_state = max(new_state, elm_states_en)
+    mass_increase = {}
+    mass_decrease = {}
+    sensitivity_number_opt = {}
+    mass.append(0)
+    mass_overloaded = 0.0
+    # switch up overloaded elements
+    for dn in domains_from_config:
+        if domain_optimized[dn] is True:
+            len_domain_density_dn = len(domain_density[dn])
+            if domain_same_state[dn] in ["max", "average"]:
+                new_state = 0
+                failing = False
+                highest_state = 0
+                sensitivity_number_list = []
+                sensitivity_number_of_domain = 0
+                for en in domains[dn]:  # find highest state, sensitivity number and if failing
+                    elm_states_en = elm_states[en]
+                    if elm_states_en >= highest_state:
+                        if domain_same_state[dn] == "max":
+                            sensitivity_number_of_domain = max(sensitivity_number_of_domain, sensitivity_number[en])
+                        highest_state = elm_states_en
+                    if FI_step_max[en] >= 1:  # new state if failing
+                        failing = True
+                        if elm_states_en < len_domain_density_dn - 1:
+                            new_state = max(new_state, elm_states_en + 1)
                         else:
                             new_state = max(new_state, elm_states_en)
-                        if domain_same_state[dn] == "average":
-                            sensitivity_number_list.append(sensitivity_number[en])
-
-                    if domain_same_state[dn] == "average":
-                        sensitivity_number_of_domain = np.average(sensitivity_number_list)
-
-                    mass_increase[dn] = 0
-                    mass_decrease[dn] = 0
-                    for en in domains[dn]:  # evaluate mass, prepare to sorting and switching
-                        elm_states[en] = highest_state
-                        elm_states_en = elm_states[en]
-                        compute_difference(failing)
-                        if (failing is True) and (new_state != highest_state):
-                            elm_states[en] = new_state
-                            elm_states_en = elm_states[en]
-                            mass[i] += mass_increase[en]
-                            mass_overloaded += mass_increase[en]
-                            mass_goal_i += mass_increase[en]
-                        elif failing is False:  # use domain name dn instead of element number for future switching
-                            sensitivity_number_opt[dn] = sensitivity_number_of_domain
-                            try:
-                                mass_increase[dn] += mass_increase[en]
-                            except KeyError:
-                                pass
-                            try:
-                                mass_decrease[dn] += mass_decrease[en]
-                            except KeyError:
-                                pass
-
-                else:  # domain_same_state is False
-                    for en in domains[dn]:
-                        if FI_step_max[en] >= 1:  # increase state if it is not the highest
-                            en_added = False
-                            if elm_states[en] < len_domain_density_dn - 1:
-                                elm_states[en] += 1
-                                en_added = True
-                            elm_states_en = elm_states[en]
-                            if en in domain_shells[dn]:  # shells
-                                mass[i] += area_elm[en] * domain_density[dn][elm_states_en] * domain_thickness[
-                                    dn][elm_states_en]
-                                if en_added is True:
-                                    mass_difference = area_elm[en] * (
-                                        domain_density[dn][elm_states_en] * domain_thickness[dn][elm_states_en] -
-                                        domain_density[dn][elm_states_en - 1] * domain_thickness[dn][elm_states_en - 1])
-                                    mass_overloaded += mass_difference
-                                    mass_goal_i += mass_difference
-                            else:  # volumes
-                                mass[i] += volume_elm[en] * domain_density[dn][elm_states_en]
-                                if en_added is True:
-                                    mass_difference = volume_elm[en] * (
-                                        domain_density[dn][elm_states_en] - domain_density[dn][elm_states_en - 1])
-                                    mass_overloaded += mass_difference
-                                    mass_goal_i += mass_difference
-                        else:  # rest of elements prepare to sorting and switching
-                            elm_states_en = elm_states[en]
-                            compute_difference()  # mass to add or remove
-                            sensitivity_number_opt[en] = sensitivity_number[en]
-        # sorting
-        sensitivity_number_sorted = sorted(sensitivity_number_opt.items(), key=operator.itemgetter(1))
-        sensitivity_number_sorted2 = list(sensitivity_number_sorted)
-        if i_violated:
-            if mass_removal_ratio - mass_addition_ratio > 0:  # removing from initial mass
-                mass_to_add = mass_addition_ratio * mass_referential * np.exp(decay_coefficient * (i - i_violated))
-                if sum(FI_violated[i - 1]):
-                    mass_to_remove = mass_addition_ratio * mass_referential * np.exp(decay_coefficient * (i - i_violated)) \
-                        - mass_overloaded
-                else:
-                    mass_to_remove = mass_removal_ratio * mass_referential * np.exp(decay_coefficient * (i - i_violated)) \
-                        - mass_overloaded
-            else:  # adding to initial mass  TODO include stress limit
-                mass_to_add = mass_removal_ratio * mass_referential * np.exp(decay_coefficient * (i - i_violated))
-                mass_to_remove = mass_to_add
-        else:
-            mass_to_add = mass_addition_ratio * mass_referential
-            mass_to_remove = mass_removal_ratio * mass_referential
-        if compensate_state_filter is True:
-            if mass_excess > 0:
-                mass_to_remove += mass_excess
-            else:  # compensate by adding more mass
-                mass_to_add -= mass_excess
-        mass_added = mass_overloaded
-        mass_removed = 0.0
-        # if mass_goal_i < mass[i - 1]:  # going from bigger mass to lower
-        added_elm = set()
-        while mass_added < mass_to_add:
-            if sensitivity_number_sorted:
-                en = sensitivity_number_sorted.pop(-1)[0]  # highest sensitivity number
-                try:
-                    mass[i] += mass_increase[en]
-                    mass_added += mass_increase[en]
-                    if isinstance(en, int):
-                        elm_states[en] += 1
-                    else:  # same state domain en
-                        if mass_increase[en] == 0:
-                            raise KeyError
-                        for en2 in domains[en]:
-                            elm_states[en2] += 1
-                    added_elm.add(en)
-                except KeyError:  # there is no mass_increase due to highest element state
-                    pass
-            else:
-                break
-        popped = 0
-        while mass_removed < mass_to_remove:
-            if mass[i] <= mass_goal_i:
-                break
-            if sensitivity_number_sorted:
-                en = sensitivity_number_sorted.pop(0)[0]  # lowest sensitivity number
-                popped += 1
-                if isinstance(en, int):
-                    if elm_states[en] != 0:
-                        mass[i] -= mass_decrease[en]
-                        mass_removed += mass_decrease[en]
-                        elm_states[en] -= 1
-                else:  # same state domain en
-                    if mass_decrease[en] != 0:
-                        mass[i] -= mass_decrease[en]
-                        mass_removed += mass_decrease[en]
-                        for en2 in domains[en]:
-                            elm_states[en2] -= 1
-            else:  # switch down elements just switched up or tried to be switched up (already in the highest state)
-                try:
-                    en = sensitivity_number_sorted2[popped][0]
-                    popped += 1
-                except IndexError:
-                    break
-                if isinstance(en, int):
-                    if elm_states[en] != 0:
-                        elm_states[en] -= 1
-                        if en in added_elm:
-                            mass[i] -= mass_increase[en]
-                            mass_removed += mass_increase[en]
-                        else:
-                            mass[i] -= mass_decrease[en]
-                            mass_removed += mass_decrease[en]
-                else:  # same state domain en
-                    if mass_decrease[en] != 0:
-                        for en2 in domains[en]:
-                            elm_states[en2] -= 1
-                        if en in added_elm:
-                            mass[i] -= mass_increase[en]
-                            mass_removed += mass_increase[en]
-                        else:
-                            mass[i] -= mass_decrease[en]
-                            mass_removed += mass_decrease[en]
-        return elm_states, mass
-
-
-    # function for exporting the resulting mesh in separate files for each state of elm_states
-    # only elements found by import_inp function are taken into account
-    def export_frd(file_nameW, nodes, Elements, elm_states, number_of_states):
-
-        def get_associated_nodes(elm_category):
-            for en in elm_category:
-                if elm_states[en] == state:
-                    associated_nodes.extend(elm_category[en])
-
-        def write_elm(elm_category, category_symbol):
-            for en in elm_category:
-                if elm_states[en] == state:
-                    f.write(" -1" + str(en).rjust(10, " ") + category_symbol.rjust(5, " ") + "\n")
-                    line = ""
-                    nodes_done = 0
-                    if category_symbol == "4":  # hexa20 different node numbering in inp and frd file
-                        for np in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
-                                10, 11, 16, 17, 18, 19, 12, 13, 14, 15]:
-                            nn = elm_category[en][np]
-                            line += str(nn).rjust(10, " ")
-                            if np in [9, 15]:
-                                f.write(" -2" + line + "\n")
-                                line = ""
-                    elif category_symbol == "5":  # penta15 has different node numbering in inp and frd file
-                        for np in [0, 1, 2, 3, 4, 5, 6, 7, 8, 12,
-                                13, 14, 9, 10, 11]:
-                            nn = elm_category[en][np]
-                            line += str(nn).rjust(10, " ")
-                            if np in [12, 11]:
-                                f.write(" -2" + line + "\n")
-                                line = ""
                     else:
-                        for nn in elm_category[en]:
-                            line += str(nn).rjust(10, " ")
-                            nodes_done += 1
-                            if nodes_done == 10 and elm_category != Elements.tetra10:
-                                f.write(" -2" + line + "\n")
-                                line = ""
-                        f.write(" -2" + line + "\n")
+                        new_state = max(new_state, elm_states_en)
+                    if domain_same_state[dn] == "average":
+                        sensitivity_number_list.append(sensitivity_number[en])
 
-        # find all possible states in elm_states and run separately for each of them
-        for state in range(number_of_states):
-            f = open(file_nameW + "_state" + str(state) + ".frd", "w")
+                if domain_same_state[dn] == "average":
+                    sensitivity_number_of_domain = np.average(sensitivity_number_list)
 
-            # print nodes
-            associated_nodes = []
-            get_associated_nodes(Elements.tria3)
-            get_associated_nodes(Elements.tria6)
-            get_associated_nodes(Elements.quad4)
-            get_associated_nodes(Elements.quad8)
-            get_associated_nodes(Elements.tetra4)
-            get_associated_nodes(Elements.tetra10)
-            get_associated_nodes(Elements.penta6)
-            get_associated_nodes(Elements.penta15)
-            get_associated_nodes(Elements.hexa8)
-            get_associated_nodes(Elements.hexa20)
+                mass_increase[dn] = 0
+                mass_decrease[dn] = 0
+                for en in domains[dn]:  # evaluate mass, prepare to sorting and switching
+                    elm_states[en] = highest_state
+                    elm_states_en = elm_states[en]
+                    compute_difference(failing)
+                    if (failing is True) and (new_state != highest_state):
+                        elm_states[en] = new_state
+                        elm_states_en = elm_states[en]
+                        mass[i] += mass_increase[en]
+                        mass_overloaded += mass_increase[en]
+                        mass_goal_i += mass_increase[en]
+                    elif failing is False:  # use domain name dn instead of element number for future switching
+                        sensitivity_number_opt[dn] = sensitivity_number_of_domain
+                        try:
+                            mass_increase[dn] += mass_increase[en]
+                        except KeyError:
+                            pass
+                        try:
+                            mass_decrease[dn] += mass_decrease[en]
+                        except KeyError:
+                            pass
 
-            associated_nodes = sorted(list(set(associated_nodes)))
-            f.write("    1C\n")
-            f.write("    2C" + str(len(associated_nodes)).rjust(30, " ") + 37 * " " + "1\n")
-            for nn in associated_nodes:
-                f.write(" -1" + str(nn).rjust(10, " ") + "% .5E% .5E% .5E\n" % (nodes[nn][0], nodes[nn][1], nodes[nn][2]))
-            f.write(" -3\n")
+            else:  # domain_same_state is False
+                for en in domains[dn]:
+                    if FI_step_max[en] >= 1:  # increase state if it is not the highest
+                        en_added = False
+                        if elm_states[en] < len_domain_density_dn - 1:
+                            elm_states[en] += 1
+                            en_added = True
+                        elm_states_en = elm_states[en]
+                        if en in domain_shells[dn]:  # shells
+                            mass[i] += area_elm[en] * domain_density[dn][elm_states_en] * domain_thickness[
+                                dn][elm_states_en]
+                            if en_added is True:
+                                mass_difference = area_elm[en] * (
+                                    domain_density[dn][elm_states_en] * domain_thickness[dn][elm_states_en] -
+                                    domain_density[dn][elm_states_en - 1] * domain_thickness[dn][elm_states_en - 1])
+                                mass_overloaded += mass_difference
+                                mass_goal_i += mass_difference
+                        else:  # volumes
+                            mass[i] += volume_elm[en] * domain_density[dn][elm_states_en]
+                            if en_added is True:
+                                mass_difference = volume_elm[en] * (
+                                    domain_density[dn][elm_states_en] - domain_density[dn][elm_states_en - 1])
+                                mass_overloaded += mass_difference
+                                mass_goal_i += mass_difference
+                    else:  # rest of elements prepare to sorting and switching
+                        elm_states_en = elm_states[en]
+                        compute_difference()  # mass to add or remove
+                        sensitivity_number_opt[en] = sensitivity_number[en]
+    # sorting
+    sensitivity_number_sorted = sorted(sensitivity_number_opt.items(), key=operator.itemgetter(1))
+    sensitivity_number_sorted2 = list(sensitivity_number_sorted)
+    if i_violated:
+        if mass_removal_ratio - mass_addition_ratio > 0:  # removing from initial mass
+            mass_to_add = mass_addition_ratio * mass_referential * np.exp(decay_coefficient * (i - i_violated))
+            if sum(FI_violated[i - 1]):
+                mass_to_remove = mass_addition_ratio * mass_referential * np.exp(decay_coefficient * (i - i_violated)) \
+                    - mass_overloaded
+            else:
+                mass_to_remove = mass_removal_ratio * mass_referential * np.exp(decay_coefficient * (i - i_violated)) \
+                    - mass_overloaded
+        else:  # adding to initial mass  TODO include stress limit
+            mass_to_add = mass_removal_ratio * mass_referential * np.exp(decay_coefficient * (i - i_violated))
+            mass_to_remove = mass_to_add
+    else:
+        mass_to_add = mass_addition_ratio * mass_referential
+        mass_to_remove = mass_removal_ratio * mass_referential
+    if compensate_state_filter is True:
+        if mass_excess > 0:
+            mass_to_remove += mass_excess
+        else:  # compensate by adding more mass
+            mass_to_add -= mass_excess
+    mass_added = mass_overloaded
+    mass_removed = 0.0
+    # if mass_goal_i < mass[i - 1]:  # going from bigger mass to lower
+    added_elm = set()
+    while mass_added < mass_to_add:
+        if sensitivity_number_sorted:
+            en = sensitivity_number_sorted.pop(-1)[0]  # highest sensitivity number
+            try:
+                mass[i] += mass_increase[en]
+                mass_added += mass_increase[en]
+                if isinstance(en, int):
+                    elm_states[en] += 1
+                else:  # same state domain en
+                    if mass_increase[en] == 0:
+                        raise KeyError
+                    for en2 in domains[en]:
+                        elm_states[en2] += 1
+                added_elm.add(en)
+            except KeyError:  # there is no mass_increase due to highest element state
+                pass
+        else:
+            break
+    popped = 0
+    while mass_removed < mass_to_remove:
+        if mass[i] <= mass_goal_i:
+            break
+        if sensitivity_number_sorted:
+            en = sensitivity_number_sorted.pop(0)[0]  # lowest sensitivity number
+            popped += 1
+            if isinstance(en, int):
+                if elm_states[en] != 0:
+                    mass[i] -= mass_decrease[en]
+                    mass_removed += mass_decrease[en]
+                    elm_states[en] -= 1
+            else:  # same state domain en
+                if mass_decrease[en] != 0:
+                    mass[i] -= mass_decrease[en]
+                    mass_removed += mass_decrease[en]
+                    for en2 in domains[en]:
+                        elm_states[en2] -= 1
+        else:  # switch down elements just switched up or tried to be switched up (already in the highest state)
+            try:
+                en = sensitivity_number_sorted2[popped][0]
+                popped += 1
+            except IndexError:
+                break
+            if isinstance(en, int):
+                if elm_states[en] != 0:
+                    elm_states[en] -= 1
+                    if en in added_elm:
+                        mass[i] -= mass_increase[en]
+                        mass_removed += mass_increase[en]
+                    else:
+                        mass[i] -= mass_decrease[en]
+                        mass_removed += mass_decrease[en]
+            else:  # same state domain en
+                if mass_decrease[en] != 0:
+                    for en2 in domains[en]:
+                        elm_states[en2] -= 1
+                    if en in added_elm:
+                        mass[i] -= mass_increase[en]
+                        mass_removed += mass_increase[en]
+                    else:
+                        mass[i] -= mass_decrease[en]
+                        mass_removed += mass_decrease[en]
+    return elm_states, mass
 
-            # print elements
-            elm_sum = 0
-            for en in elm_states:
+
+# function for exporting the resulting mesh in separate files for each state of elm_states
+# only elements found by import_inp function are taken into account
+def export_frd(file_nameW, nodes, Elements, elm_states, number_of_states):
+
+    def get_associated_nodes(elm_category):
+        for en in elm_category:
+            if elm_states[en] == state:
+                associated_nodes.extend(elm_category[en])
+
+    def write_elm(elm_category, category_symbol):
+        for en in elm_category:
+            if elm_states[en] == state:
+                f.write(" -1" + str(en).rjust(10, " ") + category_symbol.rjust(5, " ") + "\n")
+                line = ""
+                nodes_done = 0
+                if category_symbol == "4":  # hexa20 different node numbering in inp and frd file
+                    for np in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+                            10, 11, 16, 17, 18, 19, 12, 13, 14, 15]:
+                        nn = elm_category[en][np]
+                        line += str(nn).rjust(10, " ")
+                        if np in [9, 15]:
+                            f.write(" -2" + line + "\n")
+                            line = ""
+                elif category_symbol == "5":  # penta15 has different node numbering in inp and frd file
+                    for np in [0, 1, 2, 3, 4, 5, 6, 7, 8, 12,
+                            13, 14, 9, 10, 11]:
+                        nn = elm_category[en][np]
+                        line += str(nn).rjust(10, " ")
+                        if np in [12, 11]:
+                            f.write(" -2" + line + "\n")
+                            line = ""
+                else:
+                    for nn in elm_category[en]:
+                        line += str(nn).rjust(10, " ")
+                        nodes_done += 1
+                        if nodes_done == 10 and elm_category != Elements.tetra10:
+                            f.write(" -2" + line + "\n")
+                            line = ""
+                    f.write(" -2" + line + "\n")
+
+    # find all possible states in elm_states and run separately for each of them
+    for state in range(number_of_states):
+        f = open(file_nameW + "_state" + str(state) + ".frd", "w")
+
+        # print nodes
+        associated_nodes = []
+        get_associated_nodes(Elements.tria3)
+        get_associated_nodes(Elements.tria6)
+        get_associated_nodes(Elements.quad4)
+        get_associated_nodes(Elements.quad8)
+        get_associated_nodes(Elements.tetra4)
+        get_associated_nodes(Elements.tetra10)
+        get_associated_nodes(Elements.penta6)
+        get_associated_nodes(Elements.penta15)
+        get_associated_nodes(Elements.hexa8)
+        get_associated_nodes(Elements.hexa20)
+
+        associated_nodes = sorted(list(set(associated_nodes)))
+        f.write("    1C\n")
+        f.write("    2C" + str(len(associated_nodes)).rjust(30, " ") + 37 * " " + "1\n")
+        for nn in associated_nodes:
+            f.write(" -1" + str(nn).rjust(10, " ") + "% .5E% .5E% .5E\n" % (nodes[nn][0], nodes[nn][1], nodes[nn][2]))
+        f.write(" -3\n")
+
+        # print elements
+        elm_sum = 0
+        for en in elm_states:
+            if elm_states[en] == state:
+                elm_sum += 1
+        f.write("    3C" + str(elm_sum).rjust(30, " ") + 37 * " " + "1\n")
+        write_elm(Elements.tria3, "7")
+        write_elm(Elements.tria6, "8")
+        write_elm(Elements.quad4, "9")
+        write_elm(Elements.quad8, "10")
+        write_elm(Elements.tetra4, "3")
+        write_elm(Elements.tetra10, "6")
+        write_elm(Elements.penta6, "2")
+        write_elm(Elements.penta15, "5")
+        write_elm(Elements.hexa8, "1")
+        write_elm(Elements.hexa20, "4")
+        f.write(" -3\n")
+        f.close()
+
+
+# function for exporting the resulting mesh in separate files for each state of elm_states
+# only elements found by import_inp function are taken into account
+def export_inp(file_nameW, nodes, Elements, elm_states, number_of_states):
+
+    def get_associated_nodes(elm_category):
+        for en in elm_category:
+            if elm_states[en] == state:
+                associated_nodes.extend(elm_category[en])
+
+    def write_elements_of_type(elm_type, elm_type_inp):
+        if elm_type:
+            f.write("*ELEMENT, TYPE=" + elm_type_inp + ", ELSET=state" + str(state) + "\n")
+            for en, nod in elm_type.items():
                 if elm_states[en] == state:
-                    elm_sum += 1
-            f.write("    3C" + str(elm_sum).rjust(30, " ") + 37 * " " + "1\n")
-            write_elm(Elements.tria3, "7")
-            write_elm(Elements.tria6, "8")
-            write_elm(Elements.quad4, "9")
-            write_elm(Elements.quad8, "10")
-            write_elm(Elements.tetra4, "3")
-            write_elm(Elements.tetra10, "6")
-            write_elm(Elements.penta6, "2")
-            write_elm(Elements.penta15, "5")
-            write_elm(Elements.hexa8, "1")
-            write_elm(Elements.hexa20, "4")
-            f.write(" -3\n")
-            f.close()
+                    f.write(str(en))
+                    for nn in nod:
+                        f.write(", " + str(nn))
+                    f.write("\n")
+
+    # find all possible states in elm_states and run separately for each of them
+    for state in range(number_of_states):
+        f = open(file_nameW + "_state" + str(state) + ".inp", "w")
+
+        # print nodes
+        associated_nodes = []
+        get_associated_nodes(Elements.tria3)
+        get_associated_nodes(Elements.tria6)
+        get_associated_nodes(Elements.quad4)
+        get_associated_nodes(Elements.quad8)
+        get_associated_nodes(Elements.tetra4)
+        get_associated_nodes(Elements.tetra10)
+        get_associated_nodes(Elements.penta6)
+        get_associated_nodes(Elements.penta15)
+        get_associated_nodes(Elements.hexa8)
+        get_associated_nodes(Elements.hexa20)
+
+        associated_nodes = sorted(list(set(associated_nodes)))
+        f.write("*NODE\n")
+        for nn in associated_nodes:
+            f.write(str(nn) + ", % .5E, % .5E, % .5E\n" % (nodes[nn][0], nodes[nn][1], nodes[nn][2]))
+        f.write("\n")
+
+        # print elements
+        # prints only basic element types
+        write_elements_of_type(Elements.tria3, "S3")
+        write_elements_of_type(Elements.tria6, "S6")
+        write_elements_of_type(Elements.quad4, "S4")
+        write_elements_of_type(Elements.quad8, "S8")
+        write_elements_of_type(Elements.tetra4, "C3D4")
+        write_elements_of_type(Elements.tetra10, "C3D10")
+        write_elements_of_type(Elements.penta6, "C3D6")
+        write_elements_of_type(Elements.penta15, "C3D15")
+        write_elements_of_type(Elements.hexa8, "C3D8")
+        if Elements.hexa20:
+            f.write("*ELEMENT, TYPE=C3D20\n")
+            for en, nod in Elements.hexa20.items():
+                f.write(str(en))
+                for nn in nod[:15]:
+                    f.write(", " + str(nn))
+                f.write("\n")
+                for nn in nod[15:]:
+                    f.write(", " + str(nn))
+                f.write("\n")
+        f.close()
 
 
-    # function for exporting the resulting mesh in separate files for each state of elm_states
-    # only elements found by import_inp function are taken into account
-    def export_inp(file_nameW, nodes, Elements, elm_states, number_of_states):
+# sub-function to write vtk mesh
+def vtk_mesh(file_nameW, nodes, Elements):
+    f = open(file_nameW + ".vtk", "w")
+    f.write("# vtk DataFile Version 3.0\n")
+    f.write("Results from optimization\n")
+    f.write("ASCII\n")
+    f.write("DATASET UNSTRUCTURED_GRID\n")
 
-        def get_associated_nodes(elm_category):
-            for en in elm_category:
-                if elm_states[en] == state:
-                    associated_nodes.extend(elm_category[en])
+    # nodes
+    associated_nodes = set()
+    for nn_lists in list(Elements.tria3.values()) + list(Elements.tria6.values()) + list(Elements.quad4.values()) + \
+            list(Elements.quad8.values()) + list(Elements.tetra4.values()) + list(Elements.tetra10.values()) + \
+            list(Elements.penta6.values()) + list(Elements.penta15.values()) + list(Elements.hexa8.values()) + \
+            list(Elements.hexa20.values()):
+        associated_nodes.update(nn_lists)
+    associated_nodes = sorted(associated_nodes)
+    # node renumbering table for vtk format which does not jump over node numbers and contains only associated nodes
+    nodes_vtk = [None for _ in range(max(nodes.keys()) + 1)]
+    nn_vtk = 0
+    for nn in associated_nodes:
+        nodes_vtk[nn] = nn_vtk
+        nn_vtk += 1
 
-        def write_elements_of_type(elm_type, elm_type_inp):
-            if elm_type:
-                f.write("*ELEMENT, TYPE=" + elm_type_inp + ", ELSET=state" + str(state) + "\n")
-                for en, nod in elm_type.items():
-                    if elm_states[en] == state:
-                        f.write(str(en))
-                        for nn in nod:
-                            f.write(", " + str(nn))
-                        f.write("\n")
+    f.write("\nPOINTS " + str(len(associated_nodes)) + " float\n")
+    line_count = 0
+    for nn in associated_nodes:
+        f.write("{} {} {} ".format(nodes[nn][0], nodes[nn][1], nodes[nn][2]))
+        line_count += 1
+        if line_count % 2 == 0:
+            f.write("\n")
+    f.write("\n")
 
-        # find all possible states in elm_states and run separately for each of them
-        for state in range(number_of_states):
-            f = open(file_nameW + "_state" + str(state) + ".inp", "w")
+    # elements
+    number_of_elements = len(Elements.tria3) + len(Elements.tria6) + len(Elements.quad4) + len(Elements.quad8) + \
+        len(Elements.tetra4) + len(Elements.tetra10) + len(Elements.penta6) + len(Elements.penta15) + \
+        len(Elements.hexa8) + len(Elements.hexa20)
+    en_all = list(Elements.tria3.keys()) + list(Elements.tria6.keys()) + list(Elements.quad4.keys()) + \
+        list(Elements.quad8.keys()) + list(Elements.tetra4.keys()) + list(Elements.tetra10.keys()) + \
+        list(Elements.penta6.keys()) + list(Elements.penta15.keys()) + list(Elements.hexa8.keys()) + \
+        list(Elements.hexa20.keys())  # defines vtk element numbering from 0
 
-            # print nodes
-            associated_nodes = []
-            get_associated_nodes(Elements.tria3)
-            get_associated_nodes(Elements.tria6)
-            get_associated_nodes(Elements.quad4)
-            get_associated_nodes(Elements.quad8)
-            get_associated_nodes(Elements.tetra4)
-            get_associated_nodes(Elements.tetra10)
-            get_associated_nodes(Elements.penta6)
-            get_associated_nodes(Elements.penta15)
-            get_associated_nodes(Elements.hexa8)
-            get_associated_nodes(Elements.hexa20)
+    size_of_cells = 4 * len(Elements.tria3) + 7 * len(Elements.tria6) + 5 * len(Elements.quad4) + \
+        9 * len(Elements.quad8) + 5 * len(Elements.tetra4) + 11 * len(Elements.tetra10) + \
+        7 * len(Elements.penta6) + 16 * len(Elements.penta15) + 9 * len(Elements.hexa8) + \
+        21 * len(Elements.hexa20)
+    f.write("\nCELLS " + str(number_of_elements) + " " + str(size_of_cells) + "\n")
 
-            associated_nodes = sorted(list(set(associated_nodes)))
-            f.write("*NODE\n")
-            for nn in associated_nodes:
-                f.write(str(nn) + ", % .5E, % .5E, % .5E\n" % (nodes[nn][0], nodes[nn][1], nodes[nn][2]))
+    def write_elm(elm_category, node_length):
+        for en in elm_category:
+            f.write(node_length)
+            for nn in elm_category[en]:
+                f.write(" " + str(nodes_vtk[nn]) + " ")
             f.write("\n")
 
-            # print elements
-            # prints only basic element types
-            write_elements_of_type(Elements.tria3, "S3")
-            write_elements_of_type(Elements.tria6, "S6")
-            write_elements_of_type(Elements.quad4, "S4")
-            write_elements_of_type(Elements.quad8, "S8")
-            write_elements_of_type(Elements.tetra4, "C3D4")
-            write_elements_of_type(Elements.tetra10, "C3D10")
-            write_elements_of_type(Elements.penta6, "C3D6")
-            write_elements_of_type(Elements.penta15, "C3D15")
-            write_elements_of_type(Elements.hexa8, "C3D8")
-            if Elements.hexa20:
-                f.write("*ELEMENT, TYPE=C3D20\n")
-                for en, nod in Elements.hexa20.items():
-                    f.write(str(en))
-                    for nn in nod[:15]:
-                        f.write(", " + str(nn))
-                    f.write("\n")
-                    for nn in nod[15:]:
-                        f.write(", " + str(nn))
-                    f.write("\n")
-            f.close()
+    write_elm(Elements.tria3, "3")
+    write_elm(Elements.tria6, "6")
+    write_elm(Elements.quad4, "4")
+    write_elm(Elements.quad8, "8")
+    write_elm(Elements.tetra4, "4")
+    write_elm(Elements.tetra10, "10")
+    write_elm(Elements.penta6, "6")
+    write_elm(Elements.penta15, "15")
+    write_elm(Elements.hexa8, "8")
+    write_elm(Elements.hexa20, "20")
 
-
-    # sub-function to write vtk mesh
-    def vtk_mesh(file_nameW, nodes, Elements):
-        f = open(file_nameW + ".vtk", "w")
-        f.write("# vtk DataFile Version 3.0\n")
-        f.write("Results from optimization\n")
-        f.write("ASCII\n")
-        f.write("DATASET UNSTRUCTURED_GRID\n")
-
-        # nodes
-        associated_nodes = set()
-        for nn_lists in list(Elements.tria3.values()) + list(Elements.tria6.values()) + list(Elements.quad4.values()) + \
-                list(Elements.quad8.values()) + list(Elements.tetra4.values()) + list(Elements.tetra10.values()) + \
-                list(Elements.penta6.values()) + list(Elements.penta15.values()) + list(Elements.hexa8.values()) + \
-                list(Elements.hexa20.values()):
-            associated_nodes.update(nn_lists)
-        associated_nodes = sorted(associated_nodes)
-        # node renumbering table for vtk format which does not jump over node numbers and contains only associated nodes
-        nodes_vtk = [None for _ in range(max(nodes.keys()) + 1)]
-        nn_vtk = 0
-        for nn in associated_nodes:
-            nodes_vtk[nn] = nn_vtk
-            nn_vtk += 1
-
-        f.write("\nPOINTS " + str(len(associated_nodes)) + " float\n")
-        line_count = 0
-        for nn in associated_nodes:
-            f.write("{} {} {} ".format(nodes[nn][0], nodes[nn][1], nodes[nn][2]))
-            line_count += 1
-            if line_count % 2 == 0:
-                f.write("\n")
-        f.write("\n")
-
-        # elements
-        number_of_elements = len(Elements.tria3) + len(Elements.tria6) + len(Elements.quad4) + len(Elements.quad8) + \
-            len(Elements.tetra4) + len(Elements.tetra10) + len(Elements.penta6) + len(Elements.penta15) + \
-            len(Elements.hexa8) + len(Elements.hexa20)
-        en_all = list(Elements.tria3.keys()) + list(Elements.tria6.keys()) + list(Elements.quad4.keys()) + \
-            list(Elements.quad8.keys()) + list(Elements.tetra4.keys()) + list(Elements.tetra10.keys()) + \
-            list(Elements.penta6.keys()) + list(Elements.penta15.keys()) + list(Elements.hexa8.keys()) + \
-            list(Elements.hexa20.keys())  # defines vtk element numbering from 0
-
-        size_of_cells = 4 * len(Elements.tria3) + 7 * len(Elements.tria6) + 5 * len(Elements.quad4) + \
-            9 * len(Elements.quad8) + 5 * len(Elements.tetra4) + 11 * len(Elements.tetra10) + \
-            7 * len(Elements.penta6) + 16 * len(Elements.penta15) + 9 * len(Elements.hexa8) + \
-            21 * len(Elements.hexa20)
-        f.write("\nCELLS " + str(number_of_elements) + " " + str(size_of_cells) + "\n")
-
-        def write_elm(elm_category, node_length):
-            for en in elm_category:
-                f.write(node_length)
-                for nn in elm_category[en]:
-                    f.write(" " + str(nodes_vtk[nn]) + " ")
-                f.write("\n")
-
-        write_elm(Elements.tria3, "3")
-        write_elm(Elements.tria6, "6")
-        write_elm(Elements.quad4, "4")
-        write_elm(Elements.quad8, "8")
-        write_elm(Elements.tetra4, "4")
-        write_elm(Elements.tetra10, "10")
-        write_elm(Elements.penta6, "6")
-        write_elm(Elements.penta15, "15")
-        write_elm(Elements.hexa8, "8")
-        write_elm(Elements.hexa20, "20")
-
-        f.write("\nCELL_TYPES " + str(number_of_elements) + "\n")
-        cell_types = "5 " * len(Elements.tria3) + "22 " * len(Elements.tria6) + "9 " * len(Elements.quad4) + \
-                    "23 " * len(Elements.quad8) + "10 " * len(Elements.tetra4) + "24 " * len(Elements.tetra10) + \
-                    "13 " * len(Elements.penta6) + "26 " * len(Elements.penta15) + "12 " * len(Elements.hexa8) + \
-                    "25 " * len(Elements.hexa20)
-        line_count = 0
-        for char in cell_types:
-            f.write(char)
-            if char == " ":
-                line_count += 1
-                if line_count % 30 == 0:
-                    f.write("\n")
-        f.write("\n")
-
-        f.write("\nCELL_DATA " + str(number_of_elements) + "\n")
-
-        f.close()
-        return en_all, associated_nodes
-
-
-    def append_vtk_states(file_nameW, i, en_all, elm_states):
-        f = open(file_nameW + ".vtk", "a")
-
-        # element state
-        f.write("\nSCALARS element_states" + str(i).zfill(3) + " float\n")
-        f.write("LOOKUP_TABLE default\n")
-        line_count = 0
-        for en in en_all:
-            f.write(str(elm_states[en]) + " ")
+    f.write("\nCELL_TYPES " + str(number_of_elements) + "\n")
+    cell_types = "5 " * len(Elements.tria3) + "22 " * len(Elements.tria6) + "9 " * len(Elements.quad4) + \
+                "23 " * len(Elements.quad8) + "10 " * len(Elements.tetra4) + "24 " * len(Elements.tetra10) + \
+                "13 " * len(Elements.penta6) + "26 " * len(Elements.penta15) + "12 " * len(Elements.hexa8) + \
+                "25 " * len(Elements.hexa20)
+    line_count = 0
+    for char in cell_types:
+        f.write(char)
+        if char == " ":
             line_count += 1
             if line_count % 30 == 0:
                 f.write("\n")
-        f.write("\n")
-        f.close()
+    f.write("\n")
 
-    # function for exporting result in the legacy vtk format
-    # nodes and elements are renumbered from 0 not to jump over values
+    f.write("\nCELL_DATA " + str(number_of_elements) + "\n")
+
+    f.close()
+    return en_all, associated_nodes
 
 
-    def export_vtk(file_nameW, nodes, Elements, elm_states, sensitivity_number, criteria, FI_step, FI_step_max):
-        [en_all, associated_nodes] = vtk_mesh(file_nameW, nodes, Elements)
-        f = open(file_nameW + ".vtk", "a")
+def append_vtk_states(file_nameW, i, en_all, elm_states):
+    f = open(file_nameW + ".vtk", "a")
 
-        # element state
-        f.write("\nSCALARS element_states float\n")
+    # element state
+    f.write("\nSCALARS element_states" + str(i).zfill(3) + " float\n")
+    f.write("LOOKUP_TABLE default\n")
+    line_count = 0
+    for en in en_all:
+        f.write(str(elm_states[en]) + " ")
+        line_count += 1
+        if line_count % 30 == 0:
+            f.write("\n")
+    f.write("\n")
+    f.close()
+
+# function for exporting result in the legacy vtk format
+# nodes and elements are renumbered from 0 not to jump over values
+
+
+def export_vtk(file_nameW, nodes, Elements, elm_states, sensitivity_number, criteria, FI_step, FI_step_max):
+    [en_all, associated_nodes] = vtk_mesh(file_nameW, nodes, Elements)
+    f = open(file_nameW + ".vtk", "a")
+
+    # element state
+    f.write("\nSCALARS element_states float\n")
+    f.write("LOOKUP_TABLE default\n")
+    line_count = 0
+    for en in en_all:
+        f.write(str(elm_states[en]) + " ")
+        line_count += 1
+        if line_count % 30 == 0:
+            f.write("\n")
+    f.write("\n")
+
+    # sensitivity number
+    f.write("\nSCALARS sensitivity_number float\n")
+    f.write("LOOKUP_TABLE default\n")
+    line_count = 0
+    for en in en_all:
+        f.write(str(sensitivity_number[en]) + " ")
+        line_count += 1
+        if line_count % 6 == 0:
+            f.write("\n")
+    f.write("\n")
+
+    # FI
+    FI_criteria = {}  # list of FI on each element
+    for en in en_all:
+        FI_criteria[en] = [None for _ in range(len(criteria))]
+        for sn in range(len(FI_step)):
+            for FIn in range(len(criteria)):
+                if FI_step[sn][en][FIn]:
+                    if FI_criteria[en][FIn]:
+                        FI_criteria[en][FIn] = max(FI_criteria[en][FIn], FI_step[sn][en][FIn])
+                    else:
+                        FI_criteria[en][FIn] = FI_step[sn][en][FIn]
+
+    for FIn in range(len(criteria)):
+        if criteria[FIn][0] == "stress_von_Mises":
+            f.write("\nSCALARS FI=stress_von_Mises/" + str(criteria[FIn][1]).strip() + " float\n")
+        elif criteria[FIn][0] == "user_def":
+            f.write("SCALARS FI=" + criteria[FIn][1].replace(" ", "") + " float\n")
         f.write("LOOKUP_TABLE default\n")
         line_count = 0
         for en in en_all:
-            f.write(str(elm_states[en]) + " ")
-            line_count += 1
-            if line_count % 30 == 0:
-                f.write("\n")
-        f.write("\n")
-
-        # sensitivity number
-        f.write("\nSCALARS sensitivity_number float\n")
-        f.write("LOOKUP_TABLE default\n")
-        line_count = 0
-        for en in en_all:
-            f.write(str(sensitivity_number[en]) + " ")
+            if FI_criteria[en][FIn]:
+                f.write(str(FI_criteria[en][FIn]) + " ")
+            else:
+                f.write("0 ")  # since Paraview do not recognise None value
             line_count += 1
             if line_count % 6 == 0:
                 f.write("\n")
         f.write("\n")
 
-        # FI
-        FI_criteria = {}  # list of FI on each element
-        for en in en_all:
+    # FI_max
+    f.write("\nSCALARS FI_max float\n")
+    f.write("LOOKUP_TABLE default\n")
+    line_count = 0
+    for en in en_all:
+        f.write(str(FI_step_max[en]) + " ")
+        line_count += 1
+        if line_count % 6 == 0:
+            f.write("\n")
+    f.write("\n")
+
+    # element state averaged at nodes
+    def append_nodal_state(en, elm_type):
+        for nn in elm_type[en]:
+            try:
+                nodal_state[nn].append(elm_states[en])
+            except KeyError:
+                nodal_state[nn] = [elm_states[en]]
+
+    nodal_state = {}
+    for en in Elements.tria3:
+        append_nodal_state(en, Elements.tria3)
+    for en in Elements.tria6:
+        append_nodal_state(en, Elements.tria6)
+    for en in Elements.quad4:
+        append_nodal_state(en, Elements.quad4)
+    for en in Elements.quad8:
+        append_nodal_state(en, Elements.quad8)
+    for en in Elements.tetra4:
+        append_nodal_state(en, Elements.tetra4)
+    for en in Elements.tetra10:
+        append_nodal_state(en, Elements.tetra10)
+    for en in Elements.penta6:
+        append_nodal_state(en, Elements.penta6)
+    for en in Elements.penta15:
+        append_nodal_state(en, Elements.penta15)
+    for en in Elements.hexa8:
+        append_nodal_state(en, Elements.hexa8)
+    for en in Elements.hexa20:
+        append_nodal_state(en, Elements.hexa20)
+
+    f.write("\nPOINT_DATA " + str(len(associated_nodes)) + "\n")
+    f.write("FIELD field_data 1\n")
+    f.write("\nelement_states_averaged_at_nodes 1 " + str(len(associated_nodes)) + " float\n")
+    line_count = 0
+    for nn in associated_nodes:
+        f.write(str(np.average(nodal_state[nn])) + " ")
+        line_count += 1
+        if line_count % 10 == 0:
+            f.write("\n")
+    f.write("\n")
+
+    f.close()
+
+
+# function for exporting element values to csv file for displaying in Paraview, output format:
+# element_number, cg_x, cg_y, cg_z, element_state, sensitivity_number, failure indices 1, 2,..., maximal failure index
+# only elements found by import_inp function are taken into account
+def export_csv(domains_from_config, domains, criteria, FI_step, FI_step_max, file_nameW, cg, elm_states,
+            sensitivity_number):
+    # associate FI to each element and get maximums
+    FI_criteria = {}  # list of FI on each element
+    for dn in domains_from_config:
+        for en in domains[dn]:
             FI_criteria[en] = [None for _ in range(len(criteria))]
             for sn in range(len(FI_step)):
                 for FIn in range(len(criteria)):
@@ -1804,188 +1898,98 @@ class import_FI_int_pt:
                         else:
                             FI_criteria[en][FIn] = FI_step[sn][en][FIn]
 
-        for FIn in range(len(criteria)):
-            if criteria[FIn][0] == "stress_von_Mises":
-                f.write("\nSCALARS FI=stress_von_Mises/" + str(criteria[FIn][1]).strip() + " float\n")
-            elif criteria[FIn][0] == "user_def":
-                f.write("SCALARS FI=" + criteria[FIn][1].replace(" ", "") + " float\n")
-            f.write("LOOKUP_TABLE default\n")
-            line_count = 0
-            for en in en_all:
+    # write element values to the csv file
+    f = open(file_nameW + ".csv", "w")
+    line = "element_number, cg_x, cg_y, cg_z, element_state, sensitivity_number, "
+    for cr in criteria:
+        if cr[0] == "stress_von_Mises":
+            line += "FI=stress_von_Mises/" + str(cr[1]).strip() + ", "
+        else:
+            line += "FI=" + cr[1].replace(" ", "") + ", "
+    line += "FI_max\n"
+    f.write(line)
+    for dn in domains_from_config:
+        for en in domains[dn]:
+            line = str(en) + ", " + str(cg[en][0]) + ", " + str(cg[en][1]) + ", " + str(cg[en][2]) + ", " + \
+                str(elm_states[en]) + ", " + str(sensitivity_number[en]) + ", "
+            for FIn in range(len(criteria)):
                 if FI_criteria[en][FIn]:
-                    f.write(str(FI_criteria[en][FIn]) + " ")
+                    value = FI_criteria[en][FIn]
                 else:
-                    f.write("0 ")  # since Paraview do not recognise None value
-                line_count += 1
-                if line_count % 6 == 0:
-                    f.write("\n")
-            f.write("\n")
-
-        # FI_max
-        f.write("\nSCALARS FI_max float\n")
-        f.write("LOOKUP_TABLE default\n")
-        line_count = 0
-        for en in en_all:
-            f.write(str(FI_step_max[en]) + " ")
-            line_count += 1
-            if line_count % 6 == 0:
-                f.write("\n")
-        f.write("\n")
-
-        # element state averaged at nodes
-        def append_nodal_state(en, elm_type):
-            for nn in elm_type[en]:
-                try:
-                    nodal_state[nn].append(elm_states[en])
-                except KeyError:
-                    nodal_state[nn] = [elm_states[en]]
-
-        nodal_state = {}
-        for en in Elements.tria3:
-            append_nodal_state(en, Elements.tria3)
-        for en in Elements.tria6:
-            append_nodal_state(en, Elements.tria6)
-        for en in Elements.quad4:
-            append_nodal_state(en, Elements.quad4)
-        for en in Elements.quad8:
-            append_nodal_state(en, Elements.quad8)
-        for en in Elements.tetra4:
-            append_nodal_state(en, Elements.tetra4)
-        for en in Elements.tetra10:
-            append_nodal_state(en, Elements.tetra10)
-        for en in Elements.penta6:
-            append_nodal_state(en, Elements.penta6)
-        for en in Elements.penta15:
-            append_nodal_state(en, Elements.penta15)
-        for en in Elements.hexa8:
-            append_nodal_state(en, Elements.hexa8)
-        for en in Elements.hexa20:
-            append_nodal_state(en, Elements.hexa20)
-
-        f.write("\nPOINT_DATA " + str(len(associated_nodes)) + "\n")
-        f.write("FIELD field_data 1\n")
-        f.write("\nelement_states_averaged_at_nodes 1 " + str(len(associated_nodes)) + " float\n")
-        line_count = 0
-        for nn in associated_nodes:
-            f.write(str(np.average(nodal_state[nn])) + " ")
-            line_count += 1
-            if line_count % 10 == 0:
-                f.write("\n")
-        f.write("\n")
-
-        f.close()
+                    value = 0  # since Paraview do not recognise None value
+                line += str(value) + ", "
+            line += str(FI_step_max[en]) + "\n"
+            f.write(line)
+    f.close()
 
 
-    # function for exporting element values to csv file for displaying in Paraview, output format:
-    # element_number, cg_x, cg_y, cg_z, element_state, sensitivity_number, failure indices 1, 2,..., maximal failure index
-    # only elements found by import_inp function are taken into account
-    def export_csv(domains_from_config, domains, criteria, FI_step, FI_step_max, file_nameW, cg, elm_states,
-                sensitivity_number):
-        # associate FI to each element and get maximums
-        FI_criteria = {}  # list of FI on each element
-        for dn in domains_from_config:
-            for en in domains[dn]:
-                FI_criteria[en] = [None for _ in range(len(criteria))]
-                for sn in range(len(FI_step)):
-                    for FIn in range(len(criteria)):
-                        if FI_step[sn][en][FIn]:
-                            if FI_criteria[en][FIn]:
-                                FI_criteria[en][FIn] = max(FI_criteria[en][FIn], FI_step[sn][en][FIn])
-                            else:
-                                FI_criteria[en][FIn] = FI_step[sn][en][FIn]
-
-        # write element values to the csv file
-        f = open(file_nameW + ".csv", "w")
-        line = "element_number, cg_x, cg_y, cg_z, element_state, sensitivity_number, "
-        for cr in criteria:
-            if cr[0] == "stress_von_Mises":
-                line += "FI=stress_von_Mises/" + str(cr[1]).strip() + ", "
-            else:
-                line += "FI=" + cr[1].replace(" ", "") + ", "
-        line += "FI_max\n"
-        f.write(line)
-        for dn in domains_from_config:
-            for en in domains[dn]:
-                line = str(en) + ", " + str(cg[en][0]) + ", " + str(cg[en][1]) + ", " + str(cg[en][2]) + ", " + \
-                    str(elm_states[en]) + ", " + str(sensitivity_number[en]) + ", "
-                for FIn in range(len(criteria)):
-                    if FI_criteria[en][FIn]:
-                        value = FI_criteria[en][FIn]
-                    else:
-                        value = 0  # since Paraview do not recognise None value
-                    line += str(value) + ", "
-                line += str(FI_step_max[en]) + "\n"
-                f.write(line)
-        f.close()
-
-
-    # function for importing elm_states state from .frd file which was previously created as a resulting mesh
-    # it is done via element numbers only; in case of the wrong mesh, no error is recognised
-    def import_frd_state(continue_from, elm_states, number_of_states, file_name):
-        for state in range(number_of_states):
-            try:
-                f = open(continue_from[:-5] + str(state) + ".frd", "r")
-            except IOError:
-                msg = continue_from[:-5] + str(state) + ".frd" + " file not found. Check your inputs."
-                BesoLib_types.write_to_log(file_name, "\nERROR: " + msg + "\n")
-                assert False, msg
-
-            read_elm = False
-            for line in f:
-                if line[4:6] == "3C":  # start reading element numbers
-                    read_elm = True
-                elif read_elm is True and line[1:3] == "-1":
-                    en = int(line[3:13])
-                    elm_states[en] = state
-                elif read_elm is True and line[1:3] == "-3":  # finish reading element numbers
-                    break
-            f.close()
-        return elm_states
-
-
-    # function for importing elm_states state from .frd file which was previously created as a resulting mesh
-    # it is done via element numbers only; in case of the wrong mesh, no error is recognised
-    def import_inp_state(continue_from, elm_states, number_of_states, file_name):
-        for state in range(number_of_states):
-            try:
-                f = open(continue_from[:-5] + str(state) + ".inp", "r")
-            except IOError:
-                msg = continue_from[:-5] + str(state) + ".inp" + " file not found. Check your inputs."
-                BesoLib_types.write_to_log(file_name, "\nERROR: " + msg + "\n")
-                assert False, msg
-
-            read_elm = False
-            for line in f:
-                if line[0] == '*' and not line[1] == '*':
-                    read_elm = False
-                if line[:8].upper() == "*ELEMENT":
-                    read_elm = True
-                elif read_elm == True:
-                    try:
-                        en = int(line.split(",")[0])
-                        elm_states[en] = state
-                    except ValueError:
-                        pass
-            f.close()
-        return elm_states
-
-
-    # function for importing elm_states state from .csv file
-    def import_csv_state(continue_from, elm_states, file_name):
+# function for importing elm_states state from .frd file which was previously created as a resulting mesh
+# it is done via element numbers only; in case of the wrong mesh, no error is recognised
+def import_frd_state(continue_from, elm_states, number_of_states, file_name):
+    for state in range(number_of_states):
         try:
-            f = open(continue_from, "r")
+            f = open(continue_from[:-5] + str(state) + ".frd", "r")
         except IOError:
-            msg = continue_from + " file not found. Check your inputs."
+            msg = continue_from[:-5] + str(state) + ".frd" + " file not found. Check your inputs."
             BesoLib_types.write_to_log(file_name, "\nERROR: " + msg + "\n")
             assert False, msg
 
-        headers = f.readline().split(",")
-        pos_en = [x.strip() for x in headers].index("element_number")
-        pos_state = [x.strip() for x in headers].index("element_state")
+        read_elm = False
         for line in f:
-            en = int(line.split(",")[pos_en])
-            state = int(line.split(",")[pos_state])
-            elm_states[en] = state
-
+            if line[4:6] == "3C":  # start reading element numbers
+                read_elm = True
+            elif read_elm is True and line[1:3] == "-1":
+                en = int(line[3:13])
+                elm_states[en] = state
+            elif read_elm is True and line[1:3] == "-3":  # finish reading element numbers
+                break
         f.close()
-        return elm_states
+    return elm_states
+
+
+# function for importing elm_states state from .frd file which was previously created as a resulting mesh
+# it is done via element numbers only; in case of the wrong mesh, no error is recognised
+def import_inp_state(continue_from, elm_states, number_of_states, file_name):
+    for state in range(number_of_states):
+        try:
+            f = open(continue_from[:-5] + str(state) + ".inp", "r")
+        except IOError:
+            msg = continue_from[:-5] + str(state) + ".inp" + " file not found. Check your inputs."
+            BesoLib_types.write_to_log(file_name, "\nERROR: " + msg + "\n")
+            assert False, msg
+
+        read_elm = False
+        for line in f:
+            if line[0] == '*' and not line[1] == '*':
+                read_elm = False
+            if line[:8].upper() == "*ELEMENT":
+                read_elm = True
+            elif read_elm == True:
+                try:
+                    en = int(line.split(",")[0])
+                    elm_states[en] = state
+                except ValueError:
+                    pass
+        f.close()
+    return elm_states
+
+
+# function for importing elm_states state from .csv file
+def import_csv_state(continue_from, elm_states, file_name):
+    try:
+        f = open(continue_from, "r")
+    except IOError:
+        msg = continue_from + " file not found. Check your inputs."
+        BesoLib_types.write_to_log(file_name, "\nERROR: " + msg + "\n")
+        assert False, msg
+
+    headers = f.readline().split(",")
+    pos_en = [x.strip() for x in headers].index("element_number")
+    pos_state = [x.strip() for x in headers].index("element_state")
+    for line in f:
+        en = int(line.split(",")[pos_en])
+        state = int(line.split(",")[pos_state])
+        elm_states[en] = state
+
+    f.close()
+    return elm_states
