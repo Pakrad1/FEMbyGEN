@@ -507,15 +507,12 @@ class write_inp:
         self.displacement_graph=displacement_graph
         self.domain_FI_filled=domain_FI_filled
         
-    def write_inp(self):
-
         if self.reference_points == "nodes":
-            fR = open(self.file_name[:-4] + "_separated.inp", "r")
+            self.fR = open(self.file_name[:-4] + "_separated.inp", "r")
         else:
-            fR = open(self.file_name, "r")
-
-        fW = open(self.file_nameW + ".inp", "w", newline="\n")
-
+            self.fR = open(self.file_name, "r")
+        self.fW = open(self.file_nameW + ".inp", "w", newline="\n")
+        
     # function for writing ELSETs of each state
 
     def write_elset(self):
@@ -564,6 +561,7 @@ class write_inp:
             self.fW.write(", ORIENTATION=" + self.domain_orientation[self.dn][self.sn] + "\n")
         except (KeyError, IndexError):
             self.fW.write("\n")
+    def write_inp(self):
 
         elsets_done = 0
         sections_done = 0
