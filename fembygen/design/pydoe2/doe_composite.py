@@ -24,7 +24,9 @@ import FreeCADGui
 import os
 from TranslateUtils import translate
 import FreeCAD
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"/Mod/FEMbyGEN/fembygen/translations"))
+LOCATION = os.path.join("Mod","FEMbyGEN","fembygen")
+
+FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),LOCATION,"translations"))
 FreeCADGui.updateLocale()
 
 __all__ = ['ccdesign']

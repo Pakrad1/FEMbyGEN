@@ -13,14 +13,16 @@ def QT_TRANSLATE_NOOP(context, text):
 
 import FreeCADGui
 import os
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"/Mod/FEMbyGEN/fembygen/translations"))
+LOCATION = os.path.join("Mod","FEMbyGEN","fembygen")
+
+FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),LOCATION,"translations"))
 FreeCADGui.updateLocale()
 
 g_master = None
 g_workingDir = ''
 
 
-LOCATION = os.path.normpath('Mod/FEMbyGEN/fembygen')
+
 
 g_master = None
 g_workingDir = ''

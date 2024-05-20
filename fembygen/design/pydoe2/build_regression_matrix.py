@@ -21,7 +21,9 @@ def QT_TRANSLATE_NOOP(context, text):
 import FreeCADGui
 import os
 import FreeCAD
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"/Mod/FEMbyGEN/fembygen/translations"))
+LOCATION = os.path.join("Mod","FEMbyGEN","fembygen")
+
+FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),LOCATION,"translations"))
 FreeCADGui.updateLocale()
 from TranslateUtils import translate
 def grep(haystack, needle):

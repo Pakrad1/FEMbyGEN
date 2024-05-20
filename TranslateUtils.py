@@ -26,9 +26,10 @@
 import FreeCAD
 import FreeCADGui
 import os
+LOCATION = os.path.join("Mod","FEMbyGEN","fembygen")
 
 # add translations path
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"/Mod/FEMbyGEN/fembygen/translations"))
+FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),LOCATION,"translations"))
 FreeCADGui.updateLocale()
 
 if FreeCAD.GuiUp:

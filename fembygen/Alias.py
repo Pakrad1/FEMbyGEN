@@ -3,14 +3,15 @@ import FreeCADGui
 import os
 
 from TranslateUtils import translate
+LOCATION = os.path.join("Mod","FEMbyGEN","fembygen")
 
 def QT_TRANSLATE_NOOP(context, text):
     return text
 import FreeCADGui
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"/Mod/FEMbyGEN/fembygen/translations"))
+FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),LOCATION,"translations"))
 FreeCADGui.updateLocale()
 
-LOCATION = 'Mod/FEMbyGEN/fembygen'
+
 MAX_NUM_PARAMETER = 10    # maximum number of parameters
 
 class AliasCommand():
