@@ -3,7 +3,8 @@ import FreeCADGui
 from fembygen import Common , TranslateUtils
 import os
 from TranslateUtils import translate
-
+import TranslateUtils
+translate= TranslateUtils.translate
 MAX_NUM_PARAMETER = 10    # maximum number of parameters
 
 def QT_TRANSLATE_NOOP(context, text):
@@ -17,7 +18,7 @@ class InitiateCommand():
     """Create parameter spreadsheet"""
 
     def GetResources(self):
-        return {'Pixmap': ':/icons/Spreadsheet.svg',
+        return {'Pixmap': ':/icons/initiate.svg',
                 'Accel': "Shift+N",  # a default shortcut (optional)
                 'MenuText': QT_TRANSLATE_NOOP("CommandName","Initiate"),
                 'ToolTip': QT_TRANSLATE_NOOP("CommandName","Initialise and create parameter spreadsheet")}

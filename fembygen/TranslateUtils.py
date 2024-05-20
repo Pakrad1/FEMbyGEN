@@ -32,7 +32,8 @@ LOCATION = os.path.join("Mod","FEMbyGEN","fembygen")
 
 FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),LOCATION,"translations"))
 FreeCADGui.updateLocale()
-
+print(os.path.join(FreeCAD.getUserAppDataDir(),LOCATION,"translations"))
+      
 if FreeCAD.GuiUp:
     from PySide.QtCore import QT_TRANSLATE_NOOP
     from draftutils.translate import translate
