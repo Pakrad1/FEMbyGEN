@@ -2,6 +2,101 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="tr_TR" sourcelanguage="en">
 <context>
+    <name>Dialog</name>
+    <message>
+        <location filename="../ui/Results.ui" line="14"/>
+        <source>Results</source>
+        <translation>Sonuçlar</translation>
+    </message>
+    <message>
+        <location filename="../ui/Results.ui" line="30"/>
+        <source>Summary</source>
+        <translation>Toplama</translation>
+    </message>
+    <message>
+        <location filename="../ui/Results.ui" line="38"/>
+        <source>Following results are summation of all loadcases</source>
+        <translation>Aşağıdaki sonuçlar tüm yük durumlarının toplamıdır</translation>
+    </message>
+    <message>
+        <location filename="../ui/Results.ui" line="63"/>
+        <source>Click the row to open file</source>
+        <translation>Dosyayı açmak için satırı tıklayın</translation>
+    </message>
+    <message>
+        <location filename="../ui/Results.ui" line="79"/>
+        <source>Ranking weight of result [Total 100]</source>
+        <translation>Sonucun sıralama ağırlığı [Total 100]</translation>
+    </message>
+    <message>
+        <location filename="../ui/Results.ui" line="105"/>
+        <source>50</source>
+        <translation>50</translation>
+    </message>
+    <message>
+        <location filename="../ui/Results.ui" line="118"/>
+        <source>Internal Energy</source>
+        <translation>İçsel enerji</translation>
+    </message>
+    <message>
+        <location filename="../ui/Results.ui" line="137"/>
+        <source>20</source>
+        <translation>20</translation>
+    </message>
+    <message>
+        <location filename="../ui/Results.ui" line="150"/>
+        <location filename="../ui/Results.ui" line="169"/>
+        <location filename="../ui/Results.ui" line="221"/>
+        <source>10</source>
+        <translation>10</translation>
+    </message>
+    <message>
+        <location filename="../ui/Results.ui" line="182"/>
+        <source>0</source>
+        <translation>0</translation>
+    </message>
+    <message>
+        <location filename="../ui/Results.ui" line="195"/>
+        <source>Std. Dev. of Int. Energ.</source>
+        <translation>Std. Dev. of Int. Energ.</translation>
+    </message>
+    <message>
+        <location filename="../ui/Results.ui" line="208"/>
+        <source>Mean Stress</source>
+        <translation>Ortalama Stres</translation>
+    </message>
+    <message>
+        <location filename="../ui/Results.ui" line="234"/>
+        <source>Max Displacement</source>
+        <translation>Maksimum Yer Değiştirme</translation>
+    </message>
+    <message>
+        <location filename="../ui/Results.ui" line="247"/>
+        <source>Max Stress</source>
+        <translation>Maksimum Stres</translation>
+    </message>
+    <message>
+        <location filename="../ui/Results.ui" line="266"/>
+        <source>Volume</source>
+        <translation>Hacim</translation>
+    </message>
+    <message>
+        <location filename="../ui/Results.ui" line="286"/>
+        <source>Arrange</source>
+        <translation>Düzenlemek</translation>
+    </message>
+    <message>
+        <location filename="../ui/Results.ui" line="326"/>
+        <source>All Results</source>
+        <translation>Tüm sonuçlar</translation>
+    </message>
+    <message>
+        <location filename="../ui/Results.ui" line="352"/>
+        <source>You can open the files by clicking the row</source>
+        <translation>Dosyaları satıra tıklayarak açabilirsiniz</translation>
+    </message>
+</context>
+<context>
     <name>CommandName</name>
     <message>
         <location filename="../Alias.py" line="21"/>
@@ -245,101 +340,6 @@
         <location filename="../Generate.py" line="372"/>
         <source>Error while trying to delete analysis folder for generation {i}</source>
         <translation>analiz klasörünü silmeye çalışırken hata oluştu, jenerasyon {i}</translation>
-    </message>
-</context>
-<context>
-    <name>Dialog</name>
-    <message>
-        <location filename="../ui/Results.ui" line="14"/>
-        <source>Results</source>
-        <translation>Sonuçlar</translation>
-    </message>
-    <message>
-        <location filename="../ui/Results.ui" line="30"/>
-        <source>Summary</source>
-        <translation>Toplama</translation>
-    </message>
-    <message>
-        <location filename="../ui/Results.ui" line="38"/>
-        <source>Following results are summation of all loadcases</source>
-        <translation>Aşağıdaki sonuçlar tüm yük durumlarının toplamıdır</translation>
-    </message>
-    <message>
-        <location filename="../ui/Results.ui" line="63"/>
-        <source>Click the row to open file</source>
-        <translation>Dosyayı açmak için satırı tıklayın</translation>
-    </message>
-    <message>
-        <location filename="../ui/Results.ui" line="79"/>
-        <source>Ranking weight of result [Total 100]</source>
-        <translation>Sonucun sıralama ağırlığı [Total 100]</translation>
-    </message>
-    <message>
-        <location filename="../ui/Results.ui" line="105"/>
-        <source>50</source>
-        <translation>50</translation>
-    </message>
-    <message>
-        <location filename="../ui/Results.ui" line="118"/>
-        <source>Internal Energy</source>
-        <translation>İçsel enerji</translation>
-    </message>
-    <message>
-        <location filename="../ui/Results.ui" line="137"/>
-        <source>20</source>
-        <translation>20</translation>
-    </message>
-    <message>
-        <location filename="../ui/Results.ui" line="150"/>
-        <location filename="../ui/Results.ui" line="169"/>
-        <location filename="../ui/Results.ui" line="221"/>
-        <source>10</source>
-        <translation>10</translation>
-    </message>
-    <message>
-        <location filename="../ui/Results.ui" line="182"/>
-        <source>0</source>
-        <translation>0</translation>
-    </message>
-    <message>
-        <location filename="../ui/Results.ui" line="195"/>
-        <source>Std. Dev. of Int. Energ.</source>
-        <translation>Std. Dev. of Int. Energ.</translation>
-    </message>
-    <message>
-        <location filename="../ui/Results.ui" line="208"/>
-        <source>Mean Stress</source>
-        <translation>Ortalama Stres</translation>
-    </message>
-    <message>
-        <location filename="../ui/Results.ui" line="234"/>
-        <source>Max Displacement</source>
-        <translation>Maksimum Yer Değiştirme</translation>
-    </message>
-    <message>
-        <location filename="../ui/Results.ui" line="247"/>
-        <source>Max Stress</source>
-        <translation>Maksimum Stres</translation>
-    </message>
-    <message>
-        <location filename="../ui/Results.ui" line="266"/>
-        <source>Volume</source>
-        <translation>Hacim</translation>
-    </message>
-    <message>
-        <location filename="../ui/Results.ui" line="286"/>
-        <source>Arrange</source>
-        <translation>Düzenlemek</translation>
-    </message>
-    <message>
-        <location filename="../ui/Results.ui" line="326"/>
-        <source>All Results</source>
-        <translation>Tüm sonuçlar</translation>
-    </message>
-    <message>
-        <location filename="../ui/Results.ui" line="352"/>
-        <source>You can open the files by clicking the row</source>
-        <translation>Dosyaları satıra tıklayarak açabilirsiniz</translation>
     </message>
 </context>
 </TS>
