@@ -10,6 +10,7 @@ import glob
 from femtools import ccxtools
 import numpy as np
 import functools
+import TranslateUtils
 
 from TranslateUtils import translate
 def QT_TRANSLATE_NOOP(context, text):
@@ -18,7 +19,6 @@ import FreeCADGui
 import os
 LOCATION = os.path.join("Mod","FEMbyGEN","fembygen")
 
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),LOCATION,"translations"))
 FreeCADGui.updateLocale()
 
 def makeFEA():

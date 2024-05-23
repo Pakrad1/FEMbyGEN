@@ -6,6 +6,7 @@ import numpy as np
 import operator
 import glob
 import Fem
+import TranslateUtils
 
 from TranslateUtils import translate
 def QT_TRANSLATE_NOOP(context, text):
@@ -15,7 +16,7 @@ import FreeCADGui
 import os
 LOCATION = os.path.join("Mod","FEMbyGEN","fembygen")
 
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),LOCATION,"translations"))
+
 FreeCADGui.updateLocale()
 
 g_master = None

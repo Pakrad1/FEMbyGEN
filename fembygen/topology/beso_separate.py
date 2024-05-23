@@ -3,6 +3,7 @@
 from fembygen.topology import beso_lib
 import FreeCAD
 from TranslateUtils import translate
+import TranslateUtils
 
 def QT_TRANSLATE_NOOP(context, text):
     return text
@@ -10,7 +11,7 @@ import FreeCADGui
 import os
 LOCATION = os.path.join("Mod","FEMbyGEN","fembygen")
 
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),LOCATION,"translations"))
+
 FreeCADGui.updateLocale()
 
 def separating(file_name, nodes={}):

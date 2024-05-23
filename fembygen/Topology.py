@@ -11,6 +11,7 @@ import FemGui
 import glob
 import shutil
 from multiprocessing import cpu_count
+import TranslateUtils
 
 from TranslateUtils import translate
 def QT_TRANSLATE_NOOP(context, text):
@@ -19,7 +20,7 @@ import FreeCADGui
 import os
 LOCATION = os.path.join("Mod","FEMbyGEN","fembygen")
 
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),LOCATION,"translations"))
+
 FreeCADGui.updateLocale()
 
 def makeTopology():

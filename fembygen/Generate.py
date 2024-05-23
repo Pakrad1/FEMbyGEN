@@ -9,6 +9,7 @@ from PySide import QtCore, QtGui    # FreeCAD's PySide!
 import multiprocessing.dummy as mp
 from multiprocessing import cpu_count
 from functools import partial
+import TranslateUtils
 
 from TranslateUtils import translate
 def QT_TRANSLATE_NOOP(context, text):
@@ -17,7 +18,6 @@ import FreeCADGui
 import os
 LOCATION = os.path.join("Mod","FEMbyGEN","fembygen")
 
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),LOCATION,"translations"))
 FreeCADGui.updateLocale()
 
 

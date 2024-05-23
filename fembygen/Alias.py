@@ -1,14 +1,14 @@
 import FreeCAD
 import FreeCADGui
 import os
-
+import TranslateUtils
 from TranslateUtils import translate
 LOCATION = os.path.join("Mod","FEMbyGEN","fembygen")
 
 def QT_TRANSLATE_NOOP(context, text):
     return text
 import FreeCADGui
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),LOCATION,"translations"))
+
 FreeCADGui.updateLocale()
 
 
