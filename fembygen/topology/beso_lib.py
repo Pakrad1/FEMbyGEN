@@ -374,6 +374,7 @@ class elm_volume_cg:
         BesoLib_types.write_to_log(self.file_name, msg)
 
         # defining volume and centre of gravity for all element types
+    def elm_volume_cg(self):
         volume_elm = {}
         area_elm = {}
         cg = {}
