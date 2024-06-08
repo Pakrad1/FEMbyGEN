@@ -768,7 +768,7 @@
     <message>
         <location filename="../FEA.py" line="121"/>
         <source>INFO: Generation {j} analysis data not found</source>
-        <translation>BİLGİLENDİRME:Jenerasyon analiz verileri bulunamadı</translation>
+        <translation>BİLGİLENDİRME:Generation{j} analiz verileri bulunamadı</translation>
     </message>
     <message>
         <location filename="../FEA.py" line="135"/>
@@ -823,12 +823,12 @@
     <message>
         <location filename="../Generate.py" line="370"/>
         <source>Generation {i} analysis data not found</source>
-        <translation>Jenerasyon {i} analiz verisi bulunamadı</translation>
+        <translation>Generation {i} analiz verisi bulunamadı</translation>
     </message>
     <message>
         <location filename="../Generate.py" line="372"/>
         <source>Error while trying to delete analysis folder for generation {i}</source>
-        <translation>analiz klasörünü silmeye çalışırken hata oluştu, jenerasyon {i}</translation>
+        <translation>analiz klasörünü silmeye çalışırken hata oluştu,generation {i}</translation>
     </message>
 </context>
 <context>
