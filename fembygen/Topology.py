@@ -11,8 +11,10 @@ import FemGui
 import glob
 import shutil
 from multiprocessing import cpu_count
+import TranslateUtils
 
-translate = FreeCAD.Qt.translate
+from TranslateUtils import translate
+
 def QT_TRANSLATE_NOOP(context, text):
     return text
 import FreeCADGui

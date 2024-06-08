@@ -20,8 +20,9 @@ def QT_TRANSLATE_NOOP(context, text):
 
 import FreeCADGui
 import os
+import TranslateUtils
+from TranslateUtils import translate
 
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"\Mod\FEMbyGEN\fembygen\translations"))
 FreeCADGui.updateLocale()
 
 __all__ = ['fold']

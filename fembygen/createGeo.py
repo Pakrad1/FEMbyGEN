@@ -6,13 +6,14 @@ from fembygen import Topology
 from PySide import QtGui, QtCore
 import shutil
 import FreeCAD
+import TranslateUtils
+from TranslateUtils import translate
 
-translate = FreeCAD.Qt.translate
 def QT_TRANSLATE_NOOP(context, text):
     return text
 import FreeCADGui
 import os
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"\Mod\FEMbyGEN\fembygen\translations"))
+
 FreeCADGui.updateLocale()
 
 def makecreateGeo():

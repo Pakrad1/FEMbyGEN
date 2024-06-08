@@ -5,6 +5,8 @@ import itertools
 
 
 import numpy as np
+import TranslateUtils
+from TranslateUtils import translate
 
 def QT_TRANSLATE_NOOP(context, text):
     return text
@@ -12,7 +14,7 @@ def QT_TRANSLATE_NOOP(context, text):
 import FreeCADGui
 import os
 import FreeCAD
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"\Mod\FEMbyGEN\fembygen\translations"))
+
 FreeCADGui.updateLocale()
 
 def gsd(levels, reduction, n=1):

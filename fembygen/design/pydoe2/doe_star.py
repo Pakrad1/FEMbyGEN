@@ -15,11 +15,13 @@ Abraham Lee.
 import FreeCAD
 import numpy as np
 import os
+import TranslateUtils
+from TranslateUtils import translate
 
 def QT_TRANSLATE_NOOP(context, text):
     return text
 import FreeCADGui
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"\Mod\FEMbyGEN\fembygen\translations"))
+
 FreeCADGui.updateLocale()
 
 

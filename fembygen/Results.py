@@ -7,13 +7,15 @@ from fembygen import Common
 import glob
 import functools
 from femresult.resulttools import fill_femresult_stats
-translate = FreeCAD.Qt.translate
+import TranslateUtils
+
+from TranslateUtils import translate
 
 def QT_TRANSLATE_NOOP(context, text):
     return text
 import FreeCADGui
 import os
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"\Mod\FEMbyGEN\fembygen\translations"))
+
 FreeCADGui.updateLocale()
 
 def makeResult():

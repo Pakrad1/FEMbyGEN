@@ -1,12 +1,14 @@
 import numpy as np
 from fembygen.topology import beso_lib
 import os
+import TranslateUtils
+from TranslateUtils import translate
 
 def QT_TRANSLATE_NOOP(context, text):
     return text
 import FreeCADGui
 import FreeCAD
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"\Mod\FEMbyGEN\fembygen\translations"))
+
 FreeCADGui.updateLocale()
 
 class BesoFilters:

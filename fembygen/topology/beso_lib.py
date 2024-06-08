@@ -2,12 +2,14 @@ import numpy as np
 import operator
 from math import *
 import os
+import TranslateUtils
+from TranslateUtils import translate
 
 def QT_TRANSLATE_NOOP(context, text):
     return text
 import FreeCADGui
 import FreeCAD
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"\Mod\FEMbyGEN\fembygen\translations"))
+
 FreeCADGui.updateLocale()
 
 class Elements:

@@ -3,10 +3,13 @@ from fembygen.design.pydoe2 import doe_lhs, doe_box_behnken, doe_composite, doe_
 import itertools
 import os
 import FreeCAD
+import TranslateUtils
+from TranslateUtils import translate
+
 def QT_TRANSLATE_NOOP(context, text):
     return text
 import FreeCADGui
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"\Mod\FEMbyGEN\fembygen\translations"))
+
 FreeCADGui.updateLocale()
 
 def fullfact(A):
