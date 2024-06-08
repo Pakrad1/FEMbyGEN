@@ -1,11 +1,13 @@
 import FreeCAD
 import FreeCADGui
+from fembygen.TranslateUtils import translate
+import fembygen.TranslateUtils
 
-translate = FreeCAD.Qt.translate
+
 def QT_TRANSLATE_NOOP(context, text):
     return text
 import os
-FreeCADGui.addLanguagePath(os.path.join(FreeCAD.getUserAppDataDir(),"\Mod\FEMbyGEN\fembygen\translations"))
+LOCATION = os.path.join("Mod","FEMbyGEN","fembygen")
 FreeCADGui.updateLocale()
 
 class FEMbyGEN(Workbench):
