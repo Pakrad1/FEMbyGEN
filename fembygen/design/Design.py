@@ -9,7 +9,7 @@ from TranslateUtils import translate
 def QT_TRANSLATE_NOOP(context, text):
     return text
 import FreeCADGui
-
+LOCATION = os.path.join("Mod","FEMbyGEN","fembygen")
 FreeCADGui.updateLocale()
 
 def fullfact(A):

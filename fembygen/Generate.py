@@ -12,7 +12,7 @@ from functools import partial
 import TranslateUtils
 
 from TranslateUtils import translate
-
+LOCATION = os.path.join("Mod","FEMbyGEN","fembygen")
 def QT_TRANSLATE_NOOP(context, text):
     return text
 import FreeCADGui
@@ -20,7 +20,7 @@ import os
 
 FreeCADGui.updateLocale()
 
-LOCATION = os.path.normpath('Mod/FEMbyGEN/fembygen')
+
 
 class Generate:
     """Part generations"""

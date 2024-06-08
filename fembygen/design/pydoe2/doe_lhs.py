@@ -7,7 +7,7 @@ from TranslateUtils import translate
 
 import FreeCADGui
 import os
-
+LOCATION = os.path.join("Mod","FEMbyGEN","fembygen")
 FreeCADGui.updateLocale()
 
 """

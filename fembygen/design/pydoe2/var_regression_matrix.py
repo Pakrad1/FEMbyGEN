@@ -18,7 +18,7 @@ import os
 import FreeCAD
 import TranslateUtils
 from TranslateUtils import translate
-
+LOCATION = os.path.join("Mod","FEMbyGEN","fembygen")
 def QT_TRANSLATE_NOOP(context, text):
     return text
 import FreeCADGui

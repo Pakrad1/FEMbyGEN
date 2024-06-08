@@ -14,7 +14,7 @@ def QT_TRANSLATE_NOOP(context, text):
 import FreeCADGui
 import os
 import FreeCAD
-
+LOCATION = os.path.join("Mod","FEMbyGEN","fembygen")
 FreeCADGui.updateLocale()
 
 def gsd(levels, reduction, n=1):

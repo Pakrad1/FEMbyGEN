@@ -10,7 +10,7 @@ import FreeCADGui
 
 FreeCADGui.updateLocale()
 
-LOCATION = 'Mod/FEMbyGEN/fembygen'
+LOCATION = os.path.join("Mod","FEMbyGEN","fembygen")
 MAX_NUM_PARAMETER = 10    # maximum number of parameters
 
 class AliasCommand():

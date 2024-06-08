@@ -24,7 +24,7 @@ import os
 import TranslateUtils
 from TranslateUtils import translate
 
-
+LOCATION = os.path.join("Mod","FEMbyGEN","fembygen")
 FreeCADGui.updateLocale()
 
 __all__ = ['bbdesign']

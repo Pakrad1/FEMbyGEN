@@ -10,7 +10,7 @@ MAX_NUM_PARAMETER = 10    # maximum number of parameters
 
 def QT_TRANSLATE_NOOP(context, text):
     return text
-
+LOCATION = os.path.join("Mod","FEMbyGEN","fembygen")
 
 FreeCADGui.updateLocale()
 
