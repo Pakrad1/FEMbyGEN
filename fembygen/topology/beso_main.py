@@ -447,10 +447,10 @@ class BesoMain:
                     (self.optimization_base == "buckling") or (self.optimization_base == "heat"):  # from .dat file
                 [FI_step, energy_density_step, disp_i, buckling_factors, energy_density_eigen, heat_flux] = \
                     self.beso_lib.import_FI_int_pt(self.reference_value, file_nameW, domains, self.criteria, self.domain_FI, self.file_name, elm_states,
-                                                   self.domains_from_config, self.steps_superposition, self.displacement_graph)
+                                                   self.domains_from_config, self.steps_superposition, self.displacement_graph).import_FI_int_pt()
             if self.reference_points == "nodes":  # from .frd file
                 FI_step = self.beso_lib.import_FI_node(self.reference_value, file_nameW, domains, self.criteria, self.domain_FI, self.file_name,
-                                                       elm_states, self.steps_superposition)
+                                                       elm_states, self.steps_superposition).import_FI_node()
                 disp_i = self.beso_lib.import_displacement(
                     file_nameW, self.displacement_graph, self.steps_superposition)
             disp_max.append(disp_i)
@@ -773,7 +773,7 @@ class BesoMain:
                                                          self.domain_density, self.domain_thickness, domain_shells, area_elm, volume_elm,
                                                          sensitivity_number, mass, mass_referential, self.mass_addition_ratio,
                                                          self.mass_removal_ratio, self.compensate_state_filter, mass_excess, self.decay_coefficient,
-                                                         FI_violated, i_violated, i, mass_goal_i, self.domain_same_state)
+                                                         FI_violated, i_violated, i, mass_goal_i, self.domain_same_state).switching()
 
             # filtering state
             mass_not_filtered = mass[i]  # use variable to store the "right" mass

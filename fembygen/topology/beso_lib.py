@@ -783,12 +783,12 @@ class import_FI_int_pt:
             line_split = line.split()
             if line.replace(" ", "") == "\n":
                 if read_stresses == 1:
-                    self.save_FI(step_number, en_last)
+                    self.save_FI(self.step_number, en_last)
                 if read_energy_density == 1:
                     if read_eigenvalues:
                         self.energy_density_eigen[eigen_number][en_last] = np.average(ener_int_pt)
                     else:
-                        self.energy_density_step[step_number][en_last] = np.average(ener_int_pt)
+                        self.energy_density_step[self.step_number][en_last] = np.average(ener_int_pt)
                 if read_heat_flux == 1:
                     self.heat_flux[en_last] = np.average(heat_int_pt)
                 if read_displacement == 1:
@@ -811,7 +811,7 @@ class import_FI_int_pt:
                 if line.split()[-4] in map(lambda x: x.upper(), self.domains_from_config):  # TODO upper already on user input
                     read_stresses = 2
                     if last_time != line_split[-1]:
-                        step_number += 1
+                        self.step_number += 1
                         self.FI_step.append({})
                         self.energy_density_step.append({})
                         if self.steps_superposition:
@@ -822,7 +822,7 @@ class import_FI_int_pt:
                 if line.split()[-4] in map(lambda x: x.upper(), self.domains_from_config):  # TODO upper already on user input
                     read_energy_density = 2
                     if last_time != line_split[-1]:
-                        step_number += 1
+                        self.step_number += 1
                         self.FI_step.append({})
                         self.energy_density_step.append({})
                         if self.steps_superposition:
@@ -854,7 +854,7 @@ class import_FI_int_pt:
                 read_displacement = 2
                 if self.steps_superposition:
                     if last_time != line_split[-1]:
-                        step_number += 1
+                        self.step_number += 1
                         disp_components.append({})  # appending sn
                         self.FI_step.append({})
                         self.energy_density_step.append({})
@@ -866,7 +866,7 @@ class import_FI_int_pt:
                 en = int(line_split[0])
                 if en_last != en:
                     if en_last:
-                        self.save_FI(step_number, en_last)
+                        self.save_FI(self.step_number, en_last)
                         self.FI_int_pt = [[] for _ in range(len(self.criteria))]
                     en_last = en
                 sxx = float(line_split[2])
@@ -879,12 +879,12 @@ class import_FI_int_pt:
                 szx = sxz
                 szy = syz
                 self.compute_FI()
-                if step_number in self.memorized_steps:
+                if self.step_number in self.memorized_steps:
                     try:
-                        self.step_stress[step_number][en]
+                        self.step_stress[self.step_number][en]
                     except KeyError:
-                        self.step_stress[step_number][en] = []
-                    self.step_stress[step_number][en].append([sxx, syy, szz, sxy, sxz, syz])
+                        self.step_stress[self.step_number][en] = []
+                    self.step_stress[self.step_number][en].append([sxx, syy, szz, sxy, sxz, syz])
 
             elif read_energy_density == 1:
                 en = int(line_split[0])
@@ -893,17 +893,17 @@ class import_FI_int_pt:
                         if read_eigenvalues:
                             self.energy_density_eigen[eigen_number][en_last] = np.average(ener_int_pt)
                         else:
-                            self.energy_density_step[step_number][en_last] = np.average(ener_int_pt)
+                            self.energy_density_step[self.step_number][en_last] = np.average(ener_int_pt)
                         ener_int_pt = []
                     en_last = en
                 energy_density = float(line_split[2])
                 ener_int_pt.append(energy_density)
-                if step_number in self.memorized_steps:
+                if self.step_number in self.memorized_steps:
                     try:
-                        self.step_ener[step_number][en]
+                        self.step_ener[self.step_number][en]
                     except KeyError:
-                        self.step_ener[step_number][en] = []
-                        self.step_ener[step_number][en].append(energy_density)
+                        self.step_ener[self.step_number][en] = []
+                        self.step_ener[self.step_number][en].append(energy_density)
 
             elif read_heat_flux == 1:
                 en = int(line_split[0])
@@ -926,15 +926,15 @@ class import_FI_int_pt:
                     else:
                         disp_condition[cn].append(eval(component))
                 if self.steps_superposition:  # save ux, uy, uz for steps superposition
-                    disp_components[step_number][ns].append((ux, uy, uz))
+                    disp_components[self.step_number][ns].append((ux, uy, uz))
 
         if read_stresses == 1:
-            self.save_FI(step_number, en_last)
+            self.save_FI(self.step_number, en_last)
         if read_energy_density == 1:
             if read_eigenvalues:
                 self.energy_density_eigen[eigen_number][en_last] = np.average(ener_int_pt)
             else:
-                self.energy_density_step[step_number][en_last] = np.average(ener_int_pt)
+                self.energy_density_step[self.step_number][en_last] = np.average(ener_int_pt)
         if read_heat_flux == 1:
             self.heat_flux[en_last] = np.average(heat_int_pt)
         if read_displacement == 1:
